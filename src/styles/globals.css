@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Your custom design tokens (Tailwind v4 style) */
+@theme {
+  /* brand colors */
+  --color-brand-50:  oklch(0.98 0.01 250);
+  --color-brand-100: oklch(0.96 0.02 250);
+  --color-brand-500: oklch(0.64 0.12 250);
+  --color-brand-600: oklch(0.58 0.14 250);
+
+  /* semantic colors */
+  --color-bg:        var(--color-brand-50);
+  --color-fg:        oklch(0.21 0.03 257); /* near-neutral */
+
+  /* radius, spacing, etc. (examples) */
+  --radius-md: 0.5rem;
+  --spacing-xxs: 0.25rem;
+  --spacing-xs:  0.5rem;
+}
+
+/* optional base styles using the tokens */
+:root {
+  color: var(--color-fg);
+  background: var(--color-bg);
+}
