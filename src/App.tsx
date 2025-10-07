@@ -6,11 +6,16 @@ import { VulnerabilityDashboard } from "./components/VulnerabilityDashboard";
 import { ExceptionsDashboard } from "./components/ExceptionsDashboard";
 import { CoverageDashboard } from "./components/CoverageDashboard";
 import { SearchBar } from "./components/SearchBar";
+import { exportVulnerabilitiesToCSV } from "./utils/exportUtils";
+import { enrichWithSuggestions } from "./utils/suggestions";
+
  
 export default function App() {
   const [selectedEnvironment, setSelectedEnvironment] = useState("prod");
   const [selectedRelease, setSelectedRelease] = useState("v2.1.4");
   const [activeTab, setActiveTab] = useState("vulnerabilities");
+  // rows to export (fed by VulnerabilityDashboard)
+  const [exportRows, setExportRows] = useState<any[]>([]);
   
   // Vulnerabilities state
   const [vulnTimePeriod, setVulnTimePeriod] = useState("last-build");
@@ -60,17 +65,13 @@ export default function App() {
   };
  
   const handleExportCsv = async () => {
-    // Mock CSV export functionality
-    const csvData = `"Timestamp","Type","Message","Service","Count"\n"2025-01-07 14:23:45","OutOfMemoryError","Java heap space exceeded","user-service","23"\n`;
-    const blob = new Blob([csvData], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${activeTab}-${selectedEnvironment}-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    if (activeTab !== "vulnerabilities") return;
+    const enriched = await enrichWithSuggestions(exportRows, { concurrency: 4 });
+
+    exportVulnerabilitiesToCSV(
+      enriched,
+      `vulnerabilities-${selectedEnvironment}-${new Date().toISOString().split("T")[0]}.csv`
+    );
   };
  
   return (
@@ -116,6 +117,7 @@ export default function App() {
                 timePeriod={vulnTimePeriod}
                 activeFilters={vulnActiveFilters}
                 onFiltersChange={setVulnActiveFilters}
+                onExportableRowsChange={setExportRows}
               />
             </TabsContent>
             
