@@ -1,4 +1,5 @@
-const API = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const RAW_API = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const API = RAW_API.replace(/\/+$/, "");
 
 export async function getVulnerabilities(params?: {
   env?: string;
@@ -38,4 +39,15 @@ export async function suggestRemediation(body: {
   });
   if (!r.ok) throw new Error(`POST suggest failed: ${r.status}`);
   return (await r.json()) as import("../types/vulnerability").SuggestionResponse;
+}
+
+export async function getRemediationSuggestion(body: {
+  name: string;
+  severity: string;
+  package_name?: string;
+  package_version?: string;
+  description?: string;
+}): Promise<string> {
+  const r = await suggestRemediation(body);
+  return (r?.suggestion || "").trim();
 }
