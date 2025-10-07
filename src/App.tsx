@@ -7,7 +7,7 @@ import { ExceptionsDashboard } from "./components/ExceptionsDashboard";
 import { CoverageDashboard } from "./components/CoverageDashboard";
 import { SearchBar } from "./components/SearchBar";
 import { exportVulnerabilitiesToCSV } from "./utils/exportUtils";
-import { enrichWithSuggestions } from "./utils/suggestions";
+import { enrichWithSuggestions, suggestionKey } from "./utils/suggestions";
 
  
 export default function App() {
@@ -16,6 +16,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("vulnerabilities");
   // rows to export (fed by VulnerabilityDashboard)
   const [exportRows, setExportRows] = useState<any[]>([]);
+  const [seedSuggestions, setSeedSuggestions] = useState<Record<string, string>>({});
   
   // Vulnerabilities state
   const [vulnTimePeriod, setVulnTimePeriod] = useState("last-build");
@@ -68,10 +69,19 @@ export default function App() {
     if (activeTab !== "vulnerabilities") return;
     const enriched = await enrichWithSuggestions(exportRows, { concurrency: 4 });
 
+    const map: Record<string, string> = {};
+    for (const v of enriched) {
+      const key = suggestionKey(v);
+      if (v.aiSuggestion) map[key] = v.aiSuggestion;
+    }
+    setSeedSuggestions(map);
+
     exportVulnerabilitiesToCSV(
       enriched,
       `vulnerabilities-${selectedEnvironment}-${new Date().toISOString().split("T")[0]}.csv`
     );
+
+    setExportRows(enriched);
   };
  
   return (
@@ -118,6 +128,7 @@ export default function App() {
                 activeFilters={vulnActiveFilters}
                 onFiltersChange={setVulnActiveFilters}
                 onExportableRowsChange={setExportRows}
+                seedSuggestions={seedSuggestions}
               />
             </TabsContent>
             

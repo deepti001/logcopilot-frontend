@@ -6,7 +6,7 @@ const memo = new Map<string, string>();
 
 export type VulnerabilityWithAI = VulnerabilityDTO & { aiSuggestion?: string };
 
-function suggestionKey(v: VulnerabilityDTO) {
+export function suggestionKey(v: VulnerabilityDTO) {
   // Keyed by CVE + pkg + version to keep it stable per vuln instance
   const cve = (v.name || v.cve_id || "").trim();
   const pkg = (v.package_name || "").trim();

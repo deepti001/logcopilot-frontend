@@ -20,9 +20,10 @@ import { getRemediationSuggestion } from "../services/api";
 interface RemediationDrawerProps {
   vulnerability: VulnerabilityRecord;
   children: React.ReactNode;
+  aiText?: string;
 }
 
-export function RemediationDrawer({ vulnerability, children }: RemediationDrawerProps) {
+export function RemediationDrawer({ vulnerability, children, aiText }: RemediationDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // live AI suggestion state
@@ -120,11 +121,12 @@ export function RemediationDrawer({ vulnerability, children }: RemediationDrawer
 
   // ---- Fetch suggestion on drawer open ----
   async function loadSuggestion() {
+    if (aiText) return;
     setLoading(true);
     setError(null);
     try {
       const text = await getRemediationSuggestion({
-        name: cveId, // API expects 'name' (CVE id or vuln name)
+        name: cveId,
         severity,
         package_name: packageName,
         package_version: packageVersion,
@@ -139,17 +141,18 @@ export function RemediationDrawer({ vulnerability, children }: RemediationDrawer
   }
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !aiText && !suggestion) {
       void loadSuggestion();
-    } else {
+    } 
+    if (!isOpen) {
       // reset when closing to avoid stale text
-      setSuggestion("");
+      // setSuggestion("");
       setError(null);
       setLoading(false);
     }
     // Re-fetch when a different vulnerability is opened
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, cveId]);
+  }, [isOpen]);
 
   const relatedLinks = [
     {
@@ -263,12 +266,12 @@ export function RemediationDrawer({ vulnerability, children }: RemediationDrawer
                 {!loading && error && <p className="text-sm text-red-600">{error}</p>}
                 {!loading && !error && (
                   <>
-                    <p className="text-sm whitespace-pre-wrap">{suggestion || "No suggestion yet."}</p>
+                    <p className="text-sm whitespace-pre-wrap">{aiText || suggestion || "No suggestion generated yet."}</p>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="mt-2 h-7 px-2"
-                      onClick={() => copyToClipboard(suggestion, "Recommendation")}
+                      onClick={() => copyToClipboard(aiText || suggestion || "", "Recommendation")}
                     >
                       <Copy className="h-3 w-3 mr-1" />
                       Copy
