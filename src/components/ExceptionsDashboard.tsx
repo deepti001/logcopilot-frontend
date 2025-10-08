@@ -93,6 +93,15 @@ export function ExceptionsDashboard({
   const [promptText, setPromptText] = useState<string>("Summarize recent failures");
   const [nlpLoading, setNlpLoading] = useState<boolean>(false);
 
+  // --- Pagination state (10 rows per page) ---
+  const rowsPerPage = 10;
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // reset page to 1 whenever the time window or incoming rows change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [hours]);
+
   /** ===== Fetch exceptions from backend ===== */
   useEffect(() => {
     let aborted = false;
@@ -108,6 +117,7 @@ export function ExceptionsDashboard({
         // Map backend items to our table rows
         const mapped = (data.exceptions || []).map((e, idx) => mapBackendLogToRow(e, idx));
         setRows(mapped);
+        setCurrentPage(1); // ensure we start at first page after fetch
       } catch (err: any) {
         setHasError(err?.message || "Failed to load exceptions");
       } finally {
@@ -156,7 +166,7 @@ export function ExceptionsDashboard({
     if (/Timeout/i.test(msg)) return "ConnectionTimeout";
     if (/RateLimit/i.test(msg)) return "RateLimitExceeded";
     if (/Internal Server Error/i.test(msg)) return "InternalServerError";
-    if (/Neo\.ClientError\.[\w.]+/i.test(msg)) return "Neo4jClientError";
+    if (/Neo\\.ClientError\\.[\\w.]+/i.test(msg)) return "Neo4jClientError";
     return "Exception";
   }
 
@@ -165,7 +175,7 @@ export function ExceptionsDashboard({
     if (/Timeout/i.test(type)) return "Medium";
     if (/RateLimit/i.test(type)) return "Low";
     // bump to Critical if 5xx mentioned
-    if (/ 5\d\d /.test(msg)) return "Critical";
+    if (/ 5\\d\\d /.test(msg)) return "Critical";
     return "Medium";
   }
 
@@ -326,6 +336,14 @@ export function ExceptionsDashboard({
       </SheetContent>
     </Sheet>
   );
+
+  // --- Pagination helpers computed from rows ---
+  const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = currentPage * rowsPerPage;
+    return rows.slice(start, end);
+  }, [rows, currentPage]);
 
   if (hasError) {
     return (
@@ -502,42 +520,70 @@ export function ExceptionsDashboard({
           ) : rows.length === 0 ? (
             <EmptyState variant="exceptions" />
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Message</TableHead>
-                    <TableHead>Service/Pod</TableHead>
-                    <TableHead>Log Group</TableHead>
-                    <TableHead>Severity</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-mono text-xs">{r.timestamp}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{r.type}</Badge>
-                      </TableCell>
-                      <TableCell className="max-w-xl">
-                        <div className="truncate" title={r.message}>{r.message}</div>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{r.servicePod}</TableCell>
-                      <TableCell className="text-xs">{r.clusterNS}</TableCell>
-                      <TableCell>
-                        <Badge className={getSeverityColor(r.severity)}>{r.severity}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <ExceptionDetailDrawer row={r} />
-                      </TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Message</TableHead>
+                      <TableHead>Service/Pod</TableHead>
+                      <TableHead>Log Group</TableHead>
+                      <TableHead>Severity</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedRows.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-mono text-xs">{r.timestamp}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{r.type}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xl">
+                          <div className="truncate" title={r.message}>{r.message}</div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{r.servicePod}</TableCell>
+                        <TableCell className="text-xs">{r.clusterNS}</TableCell>
+                        <TableCell>
+                          <Badge className={getSeverityColor(r.severity)}>{r.severity}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <ExceptionDetailDrawer row={r} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination controls */}
+              <div className="flex items-center justify-between mt-4 text-sm">
+                <div>
+                  Showing {(currentPage - 1) * rowsPerPage + 1}–
+                  {Math.min(currentPage * rowsPerPage, rows.length)} of {rows.length}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
