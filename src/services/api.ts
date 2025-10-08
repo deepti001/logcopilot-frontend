@@ -78,22 +78,27 @@ export async function getExceptions(hours: number = 6) {
   };
 }
 
+export type NLQueryRequest = {
+  query: string;
+  timeframe: { hours: number };
+};
+
+export type NLQueryResponse = {
+  answer: string;   // markdown string
+  used_logs: number;
+};
+
 /**
  * Request an AI summary of the recent exceptions.
  * POST /v1/logs/nlp
  */
-export async function postLogsNlp(body: {
-  query: string;
-  timeframe: { hours?: number; days?: number };
-}) {
+
+export async function postLogsNlp(body: NLQueryRequest): Promise<NLQueryResponse> {
   const r = await fetch(`${API}/v1/logs/nlp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`POST logs NLP failed: ${r.status}`);
-  return (await r.json()) as {
-    answer: string;
-    used_logs: number;
-  };
+  if (!r.ok) throw new Error(`POST /logs/nlp failed: ${r.status}`);
+  return (await r.json()) as NLQueryResponse;
 }

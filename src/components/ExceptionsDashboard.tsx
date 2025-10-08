@@ -89,6 +89,9 @@ export function ExceptionsDashboard({
   const [raw, setRaw] = useState<BackendExceptionsResponse | null>(null);
   const [rows, setRows] = useState<ExceptionRow[]>([]);
   const [aiSummary, setAiSummary] = useState<string>("");
+  const [showPromptForm, setShowPromptForm] = useState<boolean>(false);
+  const [promptText, setPromptText] = useState<string>("Summarize recent failures");
+  const [nlpLoading, setNlpLoading] = useState<boolean>(false);
 
   /** ===== Fetch exceptions from backend ===== */
   useEffect(() => {
@@ -231,6 +234,38 @@ export function ExceptionsDashboard({
       setIsSummarizing(false);
     }
   }
+
+  const handleCustomPromptSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ): Promise<void> => {
+    e.preventDefault();
+
+    const query = promptText.trim();
+    if (!query) {
+      toast.error("Please enter a prompt");
+      return;
+    }
+
+    try {
+      setNlpLoading(true);
+      const res = await postLogsNlp({
+        query,
+        timeframe: { hours }, // use your existing hours state
+      });
+      // res.answer is a markdown string from the backend
+      setAiSummary(res.answer);
+      toast.success("Summary updated from custom prompt");
+      setShowPromptForm(false); // optional: collapse the form on success
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to generate summary";
+      console.error(err);
+      toast.error(msg);
+    } finally {
+      setNlpLoading(false);
+    }
+  };
+
 
   /** ===== UI helpers ===== */
   function getSeverityColor(sev: ExceptionRow["severity"]) {
@@ -410,9 +445,30 @@ export function ExceptionsDashboard({
                 {isSummarizing ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Brain className="h-4 w-4 mr-2" />}
                 {isSummarizing ? "Generating..." : "Regenerate"}
               </Button>
+              <Button variant="outline" size="sm" className="ml-2" onClick={() => setShowPromptForm((prev) => !prev)}>
+                Custom Summary
+              </Button>
             </div>
           </div>
         </CardHeader>
+        {showPromptForm && (
+          <div className="px-6 pb-4">
+            <form onSubmit={handleCustomPromptSubmit} className="flex gap-2 items-start">
+              <input
+                type="text"
+                value={promptText}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setPromptText(e.target.value)
+                }
+                placeholder='Ask something like: "Cluster by service and give counts; flag anomalies"'
+                className="flex-1 rounded-md border border-[var(--border)] bg-[var(--input-background)] px-3 py-2 text-sm outline-none focus:ring-2"
+              />
+              <Button type="submit" size="sm" disabled={nlpLoading}>
+                {nlpLoading ? "Generating..." : "Run"}
+              </Button>
+            </form>
+          </div>
+        )}
         <CardContent>
           {isLoading ? (
             <div className="space-y-2">
