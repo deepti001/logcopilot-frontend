@@ -82,7 +82,7 @@ export function ExceptionsDashboard({
   cluster = "all",
   namespace = "all",
 }: ExceptionsDashboardProps) {
-  const [hours, setHours] = useState<number>(6); // 6, 12, 24, 48
+  const [hours, setHours] = useState<number>(1); // 1, 2, 3, 4
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<string | null>(null);
 
@@ -358,10 +358,10 @@ export function ExceptionsDashboard({
               <SelectValue placeholder="Hours" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="6">Last 6 hours</SelectItem>
-              <SelectItem value="12">Last 12 hours</SelectItem>
-              <SelectItem value="24">Last 24 hours</SelectItem>
-              <SelectItem value="48">Last 48 hours</SelectItem>
+              <SelectItem value="1">Last 1 hours</SelectItem>
+              <SelectItem value="2">Last 2 hours</SelectItem>
+              <SelectItem value="3">Last 3 hours</SelectItem>
+              <SelectItem value="4">Last 4 hours</SelectItem>
             </SelectContent>
           </Select>
 
