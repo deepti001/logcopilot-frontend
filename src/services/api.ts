@@ -5,18 +5,17 @@ const API = import.meta.env.VITE_API_BASE || "http://localhost:8000";
  *  ======================== */
 export async function getVulnerabilities(params?: {
   env?: string;
-  release_id?: string;
   timeframe?: "last-build" | "1d" | "1w" | "1m";
+  image_digest?: string;
   severity?: string[];
   repo?: string;
-  image?: string;
 }) {
   const q = new URLSearchParams();
   if (params?.env) q.set("env", params.env);
-  if (params?.release_id) q.set("release_id", params.release_id);
-  if (params?.timeframe) q.set("timeframe", params.timeframe);
-  if (params?.repo) q.set("repo", params.repo);
-  if (params?.image) q.set("image", params.image);
+  if (params?.repo) q.set("image", params.repo);
+  if (params?.image_digest) {
+    q.set("image_digest", params.image_digest);
+  } else if (params?.timeframe) q.set("timeframe", params.timeframe);
   if (params?.severity?.length) {
     const sev = params.severity.map((s) => s.toUpperCase().trim()).join(",");
     q.set("severity", sev);
@@ -101,4 +100,20 @@ export async function postLogsNlp(body: NLQueryRequest): Promise<NLQueryResponse
   });
   if (!r.ok) throw new Error(`POST /logs/nlp failed: ${r.status}`);
   return (await r.json()) as NLQueryResponse;
+}
+
+/** ========================
+ *  ENVIRONMENTS SECTION
+ *  ======================== */
+export async function getEnvironments(): Promise<string[]> {
+  const r = await fetch(`${API}/v1/dashboard/environments`);
+  if (!r.ok) throw new Error(`GET environments failed: ${r.status}`);
+  return await r.json();
+}
+
+
+export async function getRepositories(): Promise<string[]> {
+  const r = await fetch(`${API}/v1/dashboard/repositories`);
+  if (!r.ok) throw new Error(`GET repositories failed: ${r.status}`);
+  return await r.json();
 }

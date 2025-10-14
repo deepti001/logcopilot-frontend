@@ -16,7 +16,7 @@ interface GlobalContextBarProps {
   // Vulnerabilities specific
   timePeriod?: string;
   onTimePeriodChange?: (value: string) => void;
-  // Exceptions specific  
+  // Exceptions specific
   timeRange?: "hourly" | "daily";
   onTimeRangeChange?: (value: "hourly" | "daily") => void;
   cluster?: string;
@@ -32,24 +32,24 @@ interface GlobalContextBarProps {
 
 const clusters = ["all", "prod-cluster", "staging-cluster", "dev-cluster"];
 const namespaces = [
-  "all", 
-  "auth-ns", 
-  "payments-ns", 
-  "orders-ns", 
+  "all",
+  "auth-ns",
+  "payments-ns",
+  "orders-ns",
   "notifications-ns",
   "user-ns",
-  "cache-ns", 
+  "cache-ns",
   "api-ns",
   "features-ns",
   "config-ns",
   "testing-ns",
-  "perf-ns"
+  "perf-ns",
 ];
 const timePeriods = [
   { value: "last-build", label: "Last Build" },
   { value: "1-day", label: "1 Day" },
   { value: "1-week", label: "1 Week" },
-  { value: "1-month", label: "1 Month" }
+  { value: "1-month", label: "1 Month" },
 ];
 
 export function GlobalContextBar({
@@ -67,13 +67,18 @@ export function GlobalContextBar({
   activeFilters = [],
   onRemoveFilter,
   onExportCsv,
-  className
+  className,
 }: GlobalContextBarProps) {
   const [isExporting, setIsExporting] = useState(false);
-  
+
+  // --- New local state for Image Digest mode ---
+  const [isImageTagMode, setIsImageTagMode] = useState(false);
+  const [imageTagInput, setImageTagInput] = useState("");
+  const [appliedImageTag, setAppliedImageTag] = useState<string | null>(null);
+
   const handleExport = async () => {
     if (!onExportCsv) return;
-    
+
     setIsExporting(true);
     try {
       await onExportCsv();
@@ -83,9 +88,17 @@ export function GlobalContextBar({
   };
 
   const getScopeInfo = () => {
-    const scopes = [];
-    if (activeTab === "vulnerabilities" && timePeriod && timePeriod !== "last-build") {
-      scopes.push(timePeriods.find(tp => tp.value === timePeriod)?.label || timePeriod);
+    const scopes: string[] = [];
+    if (activeTab === "vulnerabilities") {
+      if (isImageTagMode) {
+        scopes.push(
+          appliedImageTag ? `Image Digest (${appliedImageTag})` : "Image Digest"
+        );
+      } else if (timePeriod && timePeriod !== "last-build") {
+        scopes.push(timePeriods.find((tp) => tp.value === timePeriod)?.label || timePeriod);
+      } else if (timePeriod === "last-build") {
+        scopes.push("Last Build");
+      }
     }
     if (activeTab === "exceptions") {
       if (cluster && cluster !== "all") scopes.push(`Cluster: ${cluster}`);
@@ -95,26 +108,33 @@ export function GlobalContextBar({
     return scopes;
   };
 
+  const onToggleSourceMode = (checked: boolean) => {
+    setIsImageTagMode(checked);
+    if (!checked) {
+      // Back to Last Build mode: reset tag UI and notify parent
+      setAppliedImageTag(null);
+      setImageTagInput("");
+      onTimePeriodChange?.("last-build");
+    }
+  };
+
+  const applyImageTag = (e: React.FormEvent) => {
+    e.preventDefault();
+    const tag = imageTagInput.trim();
+    if (!tag) return;
+    setAppliedImageTag(tag);
+    // Emit a special timePeriod marker; parent parses it to add image_digest param
+    onTimePeriodChange?.(`image-digest:${tag}`);
+  };
+
   return (
-    <div
-      className={cn(
-        "bg-background border-b p-4",
-        className
-      )}
-    >
+    <div className={cn("bg-background border-b p-4", className)}>
       <div className="flex flex-wrap items-center gap-4 mb-4">
         {/* Core Context */}
         <div className="flex items-center gap-2">
           <Label className="text-sm font-medium">Env:</Label>
           <Badge variant="outline" className="font-mono">
             {environment}
-          </Badge>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Label className="text-sm font-medium">Release:</Label>
-          <Badge variant="outline" className="font-mono">
-            {release}
           </Badge>
         </div>
 
@@ -129,19 +149,45 @@ export function GlobalContextBar({
         )}
 
         {/* Tab-specific Controls */}
-        {activeTab === "vulnerabilities" && timePeriod && onTimePeriodChange && (
-          <Select value={timePeriod} onValueChange={onTimePeriodChange}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {timePeriods.map((period) => (
-                <SelectItem key={period.value} value={period.value}>
-                  {period.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {activeTab === "vulnerabilities" && (
+          <>
+            {/* Source Switch: Last Build <-> Image Digest */}
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">Source:</Label>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={isImageTagMode}
+                  onCheckedChange={onToggleSourceMode}
+                  aria-label="Toggle between Last Build and Image Digest"
+                />
+                <Label className="text-sm">
+                  {isImageTagMode
+                    ? appliedImageTag
+                      ? `Image Digest (${appliedImageTag})`
+                      : "Image Digest"
+                    : "Last Build"}
+                </Label>
+              </div>
+
+              {isImageTagMode ? (
+              <form onSubmit={applyImageTag} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={imageTagInput}
+                  onChange={(e) => setImageTagInput(e.target.value)}
+                  placeholder="Enter image digest"
+                  className="h-8 w-[220px] rounded-md border border-[var(--border)] bg-[var(--input-background)] px-2 text-sm outline-none focus:ring-2"
+                />
+                <Button type="submit" size="sm" variant="outline">
+                  Apply
+                </Button>
+              </form>
+              ) : ("")}
+            </div>
+
+            {/* If Image Digest mode: show input + apply */}
+            
+          </>
         )}
 
         {activeTab === "exceptions" && (
@@ -152,7 +198,9 @@ export function GlobalContextBar({
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={timeRange === "daily"}
-                    onCheckedChange={(checked) => onTimeRangeChange(checked ? "daily" : "hourly")}
+                    onCheckedChange={(checked) =>
+                      onTimeRangeChange(checked ? "daily" : "hourly")
+                    }
                     aria-label="Toggle between hourly and daily view"
                   />
                   <Label className="text-sm">
@@ -161,7 +209,7 @@ export function GlobalContextBar({
                 </div>
               </div>
             )}
-            
+
             {cluster && onClusterChange && (
               <Select value={cluster} onValueChange={onClusterChange}>
                 <SelectTrigger className="w-[150px]">
@@ -176,7 +224,7 @@ export function GlobalContextBar({
                 </SelectContent>
               </Select>
             )}
-            
+
             {namespace && onNamespaceChange && (
               <Select value={namespace} onValueChange={onNamespaceChange}>
                 <SelectTrigger className="w-[150px]">
@@ -196,9 +244,9 @@ export function GlobalContextBar({
 
         {/* Export Action */}
         {onExportCsv && (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleExport}
             disabled={isExporting}
             className="ml-auto"
@@ -212,7 +260,7 @@ export function GlobalContextBar({
           </Button>
         )}
       </div>
-      
+
       {/* Active Filters */}
       <AnimatePresence>
         {activeFilters.length > 0 && (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getEnvironments } from "./services/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { Header } from "./components/Header";
 import { GlobalContextBar } from "./components/GlobalContextBar";
@@ -11,7 +12,10 @@ import { enrichWithSuggestions, suggestionKey } from "./utils/suggestions";
 
  
 export default function App() {
-  const [selectedEnvironment, setSelectedEnvironment] = useState("prod");
+  const [envs, setEnvs] = useState<string[]>([]);
+  const [envsLoading, setEnvsLoading] = useState(true);
+
+  const [selectedEnvironment, setSelectedEnvironment] = useState("");
   const [selectedRelease, setSelectedRelease] = useState("v2.1.4");
   const [activeTab, setActiveTab] = useState("vulnerabilities");
   // rows to export (fed by VulnerabilityDashboard)
@@ -27,6 +31,31 @@ export default function App() {
   const [excCluster, setExcCluster] = useState("all");
   const [excNamespace, setExcNamespace] = useState("all");
   const [excActiveFilters, setExcActiveFilters] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setEnvsLoading(true);
+        const list = await getEnvironments();
+        setEnvs(list);
+        // set default env if none chosen yet
+        if (!selectedEnvironment && list.length) {
+          setSelectedEnvironment(list[0]);
+        }
+      } catch (e) {
+        console.error("Failed to fetch environments", e);
+        setEnvs([]); // keep app stable
+      } finally {
+        setEnvsLoading(false);
+      }
+    })();
+  }, []); 
+
+  useEffect(() => {
+    if (envs.length && !envs.includes(selectedEnvironment)) {
+      setSelectedEnvironment(envs[0]);
+    }
+  }, [envs, selectedEnvironment]);
  
   const handleVulnFilterRemove = (filter: string) => {
     setVulnActiveFilters(vulnActiveFilters.filter(f => f !== filter));
@@ -87,6 +116,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background">
       <Header
+        environments={envs}
+        environmentsLoading={envsLoading}
         selectedEnvironment={selectedEnvironment}
         selectedRelease={selectedRelease}
         onEnvironmentChange={setSelectedEnvironment}
@@ -121,15 +152,19 @@ export default function App() {
             />
             
             <TabsContent value="vulnerabilities" className="space-y-6">
-              <VulnerabilityDashboard
-                environment={selectedEnvironment}
-                release={selectedRelease}
-                timePeriod={vulnTimePeriod}
-                activeFilters={vulnActiveFilters}
-                onFiltersChange={setVulnActiveFilters}
-                onExportableRowsChange={setExportRows}
-                seedSuggestions={seedSuggestions}
-              />
+              {selectedEnvironment ? (
+                <VulnerabilityDashboard
+                  environment={selectedEnvironment}
+                  release={selectedRelease}
+                  timePeriod={vulnTimePeriod}
+                  activeFilters={vulnActiveFilters}
+                  onFiltersChange={setVulnActiveFilters}
+                  onExportableRowsChange={setExportRows}
+                  seedSuggestions={seedSuggestions}
+                />
+              ) : (
+                <div className="text-center text-muted-forground mt-10">Select an environment to view data</div>
+              )}
             </TabsContent>
             
             <TabsContent value="exceptions" className="space-y-6">
