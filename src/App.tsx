@@ -23,7 +23,7 @@ export default function App() {
   const [seedSuggestions, setSeedSuggestions] = useState<Record<string, string>>({});
   
   // Vulnerabilities state
-  const [vulnTimePeriod, setVulnTimePeriod] = useState("last-build");
+  const [vulnTimePeriod, setVulnTimePeriod] = useState("latest");
   const [vulnActiveFilters, setVulnActiveFilters] = useState<string[]>([]);
   const [selectedRepo, setSelectedRepo] = useState("");
   
