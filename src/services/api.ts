@@ -5,7 +5,7 @@ const API = import.meta.env.VITE_API_BASE || "http://localhost:8000";
  *  ======================== */
 export async function getVulnerabilities(params?: {
   env?: string;
-  timeframe?: "last-build" | "1d" | "1w" | "1m";
+  timeframe?: string;
   image_digest?: string;
   severity?: string[];
   repo?: string;
@@ -115,5 +115,19 @@ export async function getEnvironments(): Promise<string[]> {
 export async function getRepositories(): Promise<string[]> {
   const r = await fetch(`${API}/v1/dashboard/repositories`);
   if (!r.ok) throw new Error(`GET repositories failed: ${r.status}`);
-  return await r.json();
+
+  const urls = (await r.json()) as string[];
+
+  const repoNames = urls
+    .map((u) => {
+      try {
+        const parts = u.split("/").filter(Boolean);
+        return parts[parts.length - 1] || u;
+      } catch {
+        return u;
+      }
+    })
+    .filter(Boolean);
+
+  return repoNames;
 }

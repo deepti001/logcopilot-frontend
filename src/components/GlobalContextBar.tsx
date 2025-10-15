@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "./ui/badge";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -8,6 +8,7 @@ import { Button } from "./ui/button";
 import { Download, RefreshCw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "./ui/utils";
+import { getRepositories } from "../services/api";
 
 interface GlobalContextBarProps {
   environment: string;
@@ -16,6 +17,8 @@ interface GlobalContextBarProps {
   // Vulnerabilities specific
   timePeriod?: string;
   onTimePeriodChange?: (value: string) => void;
+  repo?: string;
+  onRepoChange?: (value: string) => void;
   // Exceptions specific
   timeRange?: "hourly" | "daily";
   onTimeRangeChange?: (value: "hourly" | "daily") => void;
@@ -46,7 +49,7 @@ const namespaces = [
   "perf-ns",
 ];
 const timePeriods = [
-  { value: "last-build", label: "Last Build" },
+  { value: "latest", label: "Latest" },
   { value: "1-day", label: "1 Day" },
   { value: "1-week", label: "1 Week" },
   { value: "1-month", label: "1 Month" },
@@ -58,6 +61,8 @@ export function GlobalContextBar({
   activeTab,
   timePeriod,
   onTimePeriodChange,
+  repo,
+  onRepoChange,
   timeRange,
   onTimeRangeChange,
   cluster,
@@ -71,10 +76,32 @@ export function GlobalContextBar({
 }: GlobalContextBarProps) {
   const [isExporting, setIsExporting] = useState(false);
 
-  // --- New local state for Image Digest mode ---
   const [isImageTagMode, setIsImageTagMode] = useState(false);
   const [imageTagInput, setImageTagInput] = useState("");
   const [appliedImageTag, setAppliedImageTag] = useState<string | null>(null);
+
+  const [repositories, setRepositories] = useState<string[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const repos = await getRepositories();
+        setRepositories(repos);
+        if (repos.length > 0) {
+          setSelectedRepo(repos[0]);
+          onRepoChange?.(repos[0]);
+        }
+      } catch (e) {
+        console.error("Failed to fetch repositories:", e);
+      }
+    })();
+  }, []);
+
+  const handleRepoChange = (value: string) => {
+    setSelectedRepo(value);
+    onRepoChange?.(value);
+  };
 
   const handleExport = async () => {
     if (!onExportCsv) return;
@@ -94,9 +121,9 @@ export function GlobalContextBar({
         scopes.push(
           appliedImageTag ? `Image Digest (${appliedImageTag})` : "Image Digest"
         );
-      } else if (timePeriod && timePeriod !== "last-build") {
+      } else if (timePeriod && timePeriod !== "latest") {
         scopes.push(timePeriods.find((tp) => tp.value === timePeriod)?.label || timePeriod);
-      } else if (timePeriod === "last-build") {
+      } else if (timePeriod === "latest") {
         scopes.push("Last Build");
       }
     }
@@ -114,7 +141,7 @@ export function GlobalContextBar({
       // Back to Last Build mode: reset tag UI and notify parent
       setAppliedImageTag(null);
       setImageTagInput("");
-      onTimePeriodChange?.("last-build");
+      onTimePeriodChange?.("latest");
     }
   };
 
@@ -183,6 +210,24 @@ export function GlobalContextBar({
                 </Button>
               </form>
               ) : ("")}
+
+              {/* === Repo Dropdown === */}
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">Repo:</Label>
+                <Select value={selectedRepo} onValueChange={handleRepoChange}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select Repo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {repositories.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
             </div>
 
             {/* If Image Digest mode: show input + apply */}

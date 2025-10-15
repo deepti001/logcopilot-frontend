@@ -25,6 +25,7 @@ export default function App() {
   // Vulnerabilities state
   const [vulnTimePeriod, setVulnTimePeriod] = useState("last-build");
   const [vulnActiveFilters, setVulnActiveFilters] = useState<string[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState("");
   
   // Exceptions state
   const [excTimeRange, setExcTimeRange] = useState<"hourly" | "daily">("hourly");
@@ -149,12 +150,15 @@ export default function App() {
               activeFilters={activeTab === "vulnerabilities" ? vulnActiveFilters : excActiveFilters}
               onRemoveFilter={activeTab === "vulnerabilities" ? handleVulnFilterRemove : handleExcFilterRemove}
               onExportCsv={handleExportCsv}
+              repo={selectedRepo}
+              onRepoChange={setSelectedRepo}
             />
             
             <TabsContent value="vulnerabilities" className="space-y-6">
               {selectedEnvironment ? (
                 <VulnerabilityDashboard
                   environment={selectedEnvironment}
+                  repo={selectedRepo}
                   release={selectedRelease}
                   timePeriod={vulnTimePeriod}
                   activeFilters={vulnActiveFilters}
