@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { BadgeSeverity } from "./ui/badge-severity";
 import { CardKPI } from "./ui/card-kpi";
 import { EmptyState } from "./ui/empty-state";
 import { ErrorState } from "./ui/error-state";
@@ -26,8 +25,9 @@ import {
   AlertCircle,
   RefreshCw,
   Eye,
-  RotateCcw,
   Brain,
+  Copy,
+  Maximize2,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { getExceptions, postLogsNlp } from "../services/api";
@@ -90,6 +90,7 @@ export function ExceptionsDashboard({
   const [raw, setRaw] = useState<BackendExceptionsResponse | null>(null);
   const [rows, setRows] = useState<ExceptionRow[]>([]);
   const [aiSummary, setAiSummary] = useState<string>("");
+  const [originalSummary, setOriginalSummary] = useState<string>("");
   const [showPromptForm, setShowPromptForm] = useState<boolean>(false);
   const [promptText, setPromptText] = useState<string>("Summarize recent failures");
   const [nlpLoading, setNlpLoading] = useState<boolean>(false);
@@ -109,6 +110,7 @@ export function ExceptionsDashboard({
         if (aborted) return;
 
         setRaw(data);
+        setOriginalSummary(data.summary || "");
         setAiSummary(data.summary || "");
         // Map backend items to our table rows
         const mapped = (data.exceptions || []).map((e, idx) => mapBackendLogToRow(e, idx));
@@ -234,18 +236,20 @@ export function ExceptionsDashboard({
 
   /** ===== LLM summary (regenerate) ===== */
   const [isSummarizing, setIsSummarizing] = useState(false);
+
   async function regenerateSummary() {
-    try {
-      setIsSummarizing(true);
-      const res = await postLogsNlp({ query: "Summarize recent failures", timeframe: { hours } });
-      setAiSummary(res.answer || "");
-      toast.success("Summary refreshed");
-    } catch (e: any) {
-      toast.error(`Failed to regenerate summary: ${e?.message || "unknown error"}`);
-    } finally {
-      setIsSummarizing(false);
-    }
+  try {
+    setIsSummarizing(true);
+    // ✅ restore original backend summary on Refresh click
+    setAiSummary(originalSummary || "No original summary available");
+    toast.success("Restored original AI summary");
+  } catch (e: any) {
+    toast.error(`Failed to restore summary: ${e?.message || "unknown error"}`);
+  } finally {
+    setIsSummarizing(false);
   }
+}
+
 
   const handleCustomPromptSubmit = async (
     e: React.FormEvent<HTMLFormElement>
@@ -291,53 +295,103 @@ export function ExceptionsDashboard({
   }
 
   /** ===== Drawers ===== */
-  const ExceptionDetailDrawer = ({ row }: { row: ExceptionRow }) => (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Eye className="h-4 w-4" />
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="w-[600px] max-w-[90vw]">
-        <SheetHeader>
-          <SheetTitle>Exception Details</SheetTitle>
-        <SheetDescription>{row.type} — {row.id}</SheetDescription>
-        </SheetHeader>
+  // inside ExceptionsDashboard.tsx
+  const ExceptionDetailDrawer = ({
+    row,
+    trigger,
+  }: {
+    row: ExceptionRow;
+    trigger?: React.ReactNode; // <— new: pass any trigger JSX
+  }) => {
+    const copy = async (text: string, label: string) => {
+      try {
+        await navigator.clipboard.writeText(text || "");
+        // toast.success(`${label} copied`);
+      } catch {
+        // toast.error(`Failed to copy ${label}`);
+      }
+    };
 
-        <div className="mt-6 space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm font-medium">Service/Pod</Label>
-              <p className="text-sm text-muted-foreground font-mono">{row.servicePod}</p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Log Group</Label>
-              <p className="text-sm text-muted-foreground">{row.clusterNS}</p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">First Seen</Label>
-              <p className="text-sm text-muted-foreground">{row.firstSeen}</p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Last Seen</Label>
-              <p className="text-sm text-muted-foreground">{row.lastSeen}</p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Severity</Label>
+    return (
+      <Sheet>
+        <SheetTrigger asChild>
+          {trigger ?? (
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="View details">
+              <Eye className="h-4 w-4" />
+            </Button>
+          )}
+        </SheetTrigger>
+
+        <SheetContent className="w-[640px] max-w-[92vw]">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              Exception Details
               <Badge className={getSeverityColor(row.severity)}>{row.severity}</Badge>
+            </SheetTitle>
+            <SheetDescription className="text-sm">
+              {row.type} — {row.id}
+            </SheetDescription>
+          </SheetHeader>
+
+          {/* Top chips */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center rounded-md border 4 py-1 text-xs">
+              <span className="mr-1 text-muted-foreground">Service/Pod:</span>
+              <span className="font-mono">{row.servicePod}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 ml-1"
+                onClick={() => copy(row.servicePod, "Service/Pod")}
+                aria-label="Copy Service/Pod"
+                title="Copy Service/Pod"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
+            <div className="inline-flex items-center rounded-md border px-4 py-1 text-xs">
+              <span className="mr-1 text-muted-foreground">Log Group:</span>
+              <span className="font-mono">{row.clusterNS}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 ml-1"
+                onClick={() => copy(row.clusterNS, "Log Group")}
+                aria-label="Copy Log Group"
+                title="Copy Log Group"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </div>
 
-          <Separator />
+          <div className="mt-6 space-y-6 px-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">First Seen</Label>
+                <p className="text-sm text-muted-foreground">{row.firstSeen}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Last Seen</Label>
+                <p className="text-sm text-muted-foreground">{row.lastSeen}</p>
+              </div>
+            </div>
 
-          <div>
-            <Label className="text-sm font-medium">Message</Label>
-            <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{row.message}</p>
+            <Separator className="my-5" />
+
+            <div>
+              <Label className="text-sm font-medium">Message</Label>
+              <pre className="mt-2 max-h-[320px] overflow-auto rounded-lg border bg-muted/40 p-3 text-sm leading-relaxed text-foreground">
+                <code className="whitespace-pre-wrap break-words">{row.message}</code>
+              </pre>
+            </div>
           </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
+        </SheetContent>
+      </Sheet>
+    );
+  };
+
 
 
   // --- Pagination helpers computed from rows ---
@@ -465,7 +519,7 @@ export function ExceptionsDashboard({
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={regenerateSummary} disabled={isSummarizing}>
                 {isSummarizing ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Brain className="h-4 w-4 mr-2" />}
-                {isSummarizing ? "Generating..." : "Regenerate"}
+                {isSummarizing ? "Generating..." : "Refresh"}
               </Button>
               <Button variant="outline" size="sm" className="ml-2" onClick={() => setShowPromptForm((prev) => !prev)}>
                 Custom Summary
@@ -544,9 +598,35 @@ export function ExceptionsDashboard({
                       <TableCell>
                         <Badge variant="outline">{r.type}</Badge>
                       </TableCell>
-                      <TableCell className="max-w-xl">
-                        <div className="truncate" title={r.message}>{r.message}</div>
+                      {/* Message cell — truncate + small inline trigger */}
+                      <TableCell className="max-w-[400px]">
+                        <div className="flex items-center gap-1">
+                          <div
+                            className="truncate text-sm text-muted-foreground max-w-[360px] whitespace-nowrap"
+                            title={r.message}
+                          >
+                            {r.message.length > 100 ? `${r.message.slice(0, 100)}...` : r.message}
+                          </div>
+
+                          {r.message.length > 100 && (
+                            <ExceptionDetailDrawer
+                              row={r}
+                              trigger={
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 shrink-0"
+                                  aria-label="Expand message"
+                                  title="Expand message"
+                                >
+                                  <Maximize2 className="h-3.5 w-3.5" />
+                                </Button>
+                              }
+                            />
+                          )}
+                        </div>
                       </TableCell>
+
                       <TableCell className="font-mono text-xs">{r.servicePod}</TableCell>
                       <TableCell className="text-xs">{r.clusterNS}</TableCell>
                       <TableCell>
