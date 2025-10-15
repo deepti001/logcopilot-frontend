@@ -456,7 +456,7 @@ export function ExceptionsDashboard({
               value={timeValue}
               onChange={(e) => setTimeValue(Number(e.target.value))}
               placeholder={`Enter ${timeMode}`}
-              className="w-[140px] rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary ml-3 mr-3"
+              className="w-[140px] rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary ml-2 mr-2"
             />
 
           ) : (
