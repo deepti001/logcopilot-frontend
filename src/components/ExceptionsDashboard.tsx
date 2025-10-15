@@ -50,8 +50,6 @@ type BackendExceptionsResponse = {
 interface ExceptionsDashboardProps {
   environment: string;
   release: string;
-  /** Not used by backend — we keep it for existing API. */
-  timeRange?: "hourly" | "daily";
   /** Not used by backend — kept to preserve UI. */
   cluster?: string;
   namespace?: string;
@@ -79,11 +77,10 @@ interface ExceptionRow {
 export function ExceptionsDashboard({
   environment,
   release,
-  timeRange = "hourly",
   cluster = "all",
-  namespace = "all",
+  namespace,
 }: ExceptionsDashboardProps) {
-  const [hours, setHours] = useState<number>(48); // 1, 2, 3, 4
+  const [hours, setHours] = useState<number>(24); // 1, 2, 3, 4
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<string | null>(null);
 
@@ -95,6 +92,12 @@ export function ExceptionsDashboard({
   const [promptText, setPromptText] = useState<string>("Summarize recent failures");
   const [nlpLoading, setNlpLoading] = useState<boolean>(false);
 
+  const [timeMode, setTimeMode] = useState<"hours" | "minutes" | "time-range">("hours");
+  const [timeValue, setTimeValue] = useState<number>(24);
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
+
+
   // --- Pagination state (10 rows per page) ---
   const rowsPerPage = 10;
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -102,11 +105,13 @@ export function ExceptionsDashboard({
   /** ===== Fetch exceptions from backend ===== */
   useEffect(() => {
     let aborted = false;
+    if(!namespace) return;
+
     (async () => {
       try {
         setIsLoading(true);
         setHasError(null);
-        const data = await getExceptions(hours); // GET /v1/logs/exceptions?hours=<hours>
+        const data = await getExceptions(timeMode, timeValue, startTime, endTime, namespace);
         if (aborted) return;
 
         setRaw(data);
@@ -124,7 +129,7 @@ export function ExceptionsDashboard({
     })();
 
     return () => { aborted = true; };
-  }, [hours]);
+  }, [hours, namespace]);
 
   /** ===== Heuristics & helpers ===== */
   function mapBackendLogToRow(e: BackendLogEntry, idx: number): ExceptionRow {
@@ -335,7 +340,7 @@ export function ExceptionsDashboard({
 
           {/* Top chips */}
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center rounded-md border 4 py-1 text-xs">
+            <div className="inline-flex items-center rounded-md border px-4 py-1 text-xs">
               <span className="mr-1 text-muted-foreground">Service/Pod:</span>
               <span className="font-mono">{row.servicePod}</span>
               <Button
@@ -425,27 +430,80 @@ export function ExceptionsDashboard({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* New Time Filter Controls */}
+        <div className="flex items-center gap-3">
+          {/* Type Selector */}
           <Select
-            value={String(hours)}
-            onValueChange={(v) => setHours(Number(v))}
+            value={timeMode}
+            onValueChange={(v: "hours" | "minutes" | "time-range") => setTimeMode(v)}
           >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Hours" />
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="48">Last 48 hours</SelectItem>
-              <SelectItem value="24">Last 24 hours</SelectItem>
-              <SelectItem value="3">Last 3 hours</SelectItem>
-              <SelectItem value="4">Last 4 hours</SelectItem>
+              <SelectItem value="hours">Hours</SelectItem>
+              <SelectItem value="minutes">Minutes</SelectItem>
+              <SelectItem value="time-range">Time Range</SelectItem>
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="sm" onClick={() => setHours(h => h)}>
+          {/* Conditional Inputs */}
+          {timeMode === "hours" || timeMode === "minutes" ? (
+            <input
+              type="number"
+              min="1"
+              max="1000"
+              value={timeValue}
+              onChange={(e) => setTimeValue(Number(e.target.value))}
+              placeholder={`Enter ${timeMode}`}
+              className="w-[140px] rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary ml-3 mr-3"
+            />
+
+          ) : (
+            <div className="flex items-center gap-2 px-3">
+              <input
+                type="datetime-local"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+              />
+              <span className="text-muted-foreground">to</span>
+              <input
+                type="datetime-local"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          )}
+
+          {/* Apply button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                setIsLoading(true);
+                setHasError(null);
+                const data = await getExceptions(timeMode, timeValue, startTime, endTime, namespace);
+                setRaw(data);
+                setOriginalSummary(data.summary || "");
+                setAiSummary(data.summary || "");
+                const mapped = (data.exceptions || []).map((e, idx) => mapBackendLogToRow(e, idx));
+                setRows(mapped);
+                toast.success("Time filter applied");
+              } catch (err: any) {
+                setHasError(err?.message || "Failed to apply time filter");
+              } finally {
+                setIsLoading(false);
+              }
+            }}
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            Apply
           </Button>
         </div>
+
       </div>
 
       {/* KPI Cards */}
@@ -599,16 +657,16 @@ export function ExceptionsDashboard({
                         <Badge variant="outline">{r.type}</Badge>
                       </TableCell>
                       {/* Message cell — truncate + small inline trigger */}
-                      <TableCell className="max-w-[400px]">
+                      <TableCell className="max-w-[200px]">
                         <div className="flex items-center gap-1">
                           <div
-                            className="truncate text-sm text-muted-foreground max-w-[360px] whitespace-nowrap"
+                            className="truncate text-sm text-muted-foreground max-w-[180px] whitespace-nowrap"
                             title={r.message}
                           >
-                            {r.message.length > 100 ? `${r.message.slice(0, 100)}...` : r.message}
+                            {r.message.length > 50 ? `${r.message.slice(0, 50)}...` : r.message}
                           </div>
 
-                          {r.message.length > 100 && (
+                          {r.message.length > 50 && (
                             <ExceptionDetailDrawer
                               row={r}
                               trigger={

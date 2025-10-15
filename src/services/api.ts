@@ -62,8 +62,26 @@ export async function getRemediationSuggestion(body: {
  * Fetch recent runtime exceptions.
  * GET /v1/logs/exceptions?hours=<int>
  */
-export async function getExceptions(hours: number = 6) {
-  const r = await fetch(`${API}/v1/logs/exceptions?hours=${hours}`);
+// services/api.ts
+export async function getExceptions(
+  type: "hours" | "minutes" | "time-range" = "hours",
+  value: number | null = 6,
+  startTime?: string | null,
+  endTime?: string | null,
+  podName?: string | null,
+) {
+  const params = new URLSearchParams();
+
+  if (type === "hours" || type === "minutes") {
+    if (value !== null) params.append(type, String(value));
+  } else if (type === "time-range" && startTime && endTime) {
+    params.append("start_time", startTime);
+    params.append("end_time", endTime);
+  }
+
+  if(podName) params.append("podname", podName);
+
+  const r = await fetch(`${API}/v1/logs/exceptions?${params.toString()}`);
   if (!r.ok) throw new Error(`GET exceptions failed: ${r.status}`);
   return (await r.json()) as {
     count: number;
@@ -76,6 +94,7 @@ export async function getExceptions(hours: number = 6) {
     summary: string;
   };
 }
+
 
 export type NLQueryRequest = {
   query: string;
@@ -130,4 +149,15 @@ export async function getRepositories(): Promise<string[]> {
     .filter(Boolean);
 
   return repoNames;
+}
+
+
+/** ========================
+ *  PODS SECTION
+ *  ======================== */
+export async function getPods(environment: string): Promise<string[]> {
+  if (!environment) return [];
+  const r = await fetch(`${API}/v1/dashboard/pods?environment=${encodeURIComponent(environment)}`);
+  if (!r.ok) throw new Error(`GET pods failed: ${r.status}`);
+  return await r.json();
 }

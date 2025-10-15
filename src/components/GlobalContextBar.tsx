@@ -9,6 +9,7 @@ import { Download, RefreshCw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "./ui/utils";
 import { getRepositories } from "../services/api";
+import { getPods } from "../services/api";
 
 interface GlobalContextBarProps {
   environment: string;
@@ -19,7 +20,7 @@ interface GlobalContextBarProps {
   onTimePeriodChange?: (value: string) => void;
   repo?: string;
   onRepoChange?: (value: string) => void;
-  // Exceptions specific
+  // Exceptions specific (kept in props for compatibility, but UI removed)
   timeRange?: "hourly" | "daily";
   onTimeRangeChange?: (value: "hourly" | "daily") => void;
   cluster?: string;
@@ -48,6 +49,7 @@ const namespaces = [
   "testing-ns",
   "perf-ns",
 ];
+
 const timePeriods = [
   { value: "latest", label: "Latest" },
   { value: "1-day", label: "1 Day" },
@@ -63,8 +65,7 @@ export function GlobalContextBar({
   onTimePeriodChange,
   repo,
   onRepoChange,
-  timeRange,
-  onTimeRangeChange,
+  // timeRange, onTimeRangeChange,  // kept in props above, not used in UI now
   cluster,
   onClusterChange,
   namespace,
@@ -83,6 +84,10 @@ export function GlobalContextBar({
   const [repositories, setRepositories] = useState<string[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string>("");
 
+  const [podsCache, setPodsCache] = useState<Record<string, string[]>>({});
+  const [pods, setPods] = useState<string[]>([]);
+  const [selectedPod, setSelectedPod] = useState<string>("");
+
   useEffect(() => {
     (async () => {
       try {
@@ -97,6 +102,59 @@ export function GlobalContextBar({
       }
     })();
   }, []);
+
+  // ✅ Load pods whenever environment changes — only for Exceptions tab
+  useEffect(() => {
+    if (activeTab !== "exceptions" || !environment) return;
+
+    let cancelled = false;
+
+    async function fetchPods() {
+      try {
+        // Clear current list to avoid briefly showing stale options
+        setPods([]);
+
+        // 1) Check cache first
+        const cached = podsCache[environment];
+        if (cached && cached.length) {
+          if (cancelled) return;
+
+          // Replace the list entirely
+          setPods(cached);
+
+          // Pick selectedPod if still valid, otherwise first
+          const next = cached.includes(selectedPod) && selectedPod ? selectedPod : (cached[0] || "");
+          // Always propagate selection (ensures ExceptionsDashboard refetch even if names overlap across envs)
+          setSelectedPod(next);
+          onNamespaceChange?.(next);
+          return;
+        }
+
+        // 2) No cache → fetch
+        const data = await getPods(environment);
+        if (cancelled) return;
+
+        // Cache & replace list
+        setPodsCache(prev => ({ ...prev, [environment]: data }));
+        setPods(data);
+
+        // Default to first pod
+        const first = data[0] || "";
+        setSelectedPod(first);
+        onNamespaceChange?.(first);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to fetch pods for environment", environment, err);
+          setPods([]);
+          setSelectedPod("");
+          onNamespaceChange?.("");
+        }
+      }
+    }
+
+    fetchPods();
+    return () => { cancelled = true; };
+  }, [environment, activeTab]);
 
   const handleRepoChange = (value: string) => {
     setSelectedRepo(value);
@@ -114,6 +172,7 @@ export function GlobalContextBar({
     }
   };
 
+  // 👉 Now ONLY builds scope info for the Vulnerabilities tab
   const getScopeInfo = () => {
     const scopes: string[] = [];
     if (activeTab === "vulnerabilities") {
@@ -126,11 +185,6 @@ export function GlobalContextBar({
       } else if (timePeriod === "latest") {
         scopes.push("Last Build");
       }
-    }
-    if (activeTab === "exceptions") {
-      if (cluster && cluster !== "all") scopes.push(`Cluster: ${cluster}`);
-      if (namespace && namespace !== "all") scopes.push(`NS: ${namespace}`);
-      if (timeRange) scopes.push(timeRange);
     }
     return scopes;
   };
@@ -165,19 +219,19 @@ export function GlobalContextBar({
           </Badge>
         </div>
 
-        {/* Scope Badge */}
-        {getScopeInfo().length > 0 && (
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">Scope:</Label>
-            <Badge variant="secondary" className="text-xs">
-              {getScopeInfo().join(" • ")}
-            </Badge>
-          </div>
-        )}
-
         {/* Tab-specific Controls */}
         {activeTab === "vulnerabilities" && (
           <>
+            {/* Scope Badge — shown only for Vulnerabilities */}
+            {getScopeInfo().length > 0 && (
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">Scope:</Label>
+                <Badge variant="secondary" className="text-xs">
+                  {getScopeInfo().join(" • ")}
+                </Badge>
+              </div>
+            )}
+
             {/* Source Switch: Last Build <-> Image Digest */}
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">Source:</Label>
@@ -197,21 +251,21 @@ export function GlobalContextBar({
               </div>
 
               {isImageTagMode ? (
-              <form onSubmit={applyImageTag} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={imageTagInput}
-                  onChange={(e) => setImageTagInput(e.target.value)}
-                  placeholder="Enter image digest"
-                  className="h-8 w-[220px] rounded-md border border-[var(--border)] bg-[var(--input-background)] px-2 text-sm outline-none focus:ring-2"
-                />
-                <Button type="submit" size="sm" variant="outline">
-                  Apply
-                </Button>
-              </form>
-              ) : ("")}
+                <form onSubmit={applyImageTag} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={imageTagInput}
+                    onChange={(e) => setImageTagInput(e.target.value)}
+                    placeholder="Enter image digest"
+                    className="h-8 w-[220px] rounded-md border border-[var(--border)] bg-[var(--input-background)] px-2 text-sm outline-none focus:ring-2"
+                  />
+                  <Button type="submit" size="sm" variant="outline">
+                    Apply
+                  </Button>
+                </form>
+              ) : null}
 
-              {/* === Repo Dropdown === */}
+              {/* Repo Dropdown */}
               <div className="flex items-center gap-2">
                 <Label className="text-sm font-medium">Repo:</Label>
                 <Select value={selectedRepo} onValueChange={handleRepoChange}>
@@ -227,34 +281,31 @@ export function GlobalContextBar({
                   </SelectContent>
                 </Select>
               </div>
-
             </div>
 
-            {/* If Image Digest mode: show input + apply */}
-            
+            {/* Export Action */}
+            {onExportCsv && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                disabled={isExporting}
+                className="ml-auto"
+              >
+                {isExporting ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Export CSV
+              </Button>
+            )}
           </>
         )}
 
         {activeTab === "exceptions" && (
           <>
-            {timeRange && onTimeRangeChange && (
-              <div className="flex items-center gap-2">
-                <Label className="text-sm font-medium">Time Range:</Label>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={timeRange === "daily"}
-                    onCheckedChange={(checked) =>
-                      onTimeRangeChange(checked ? "daily" : "hourly")
-                    }
-                    aria-label="Toggle between hourly and daily view"
-                  />
-                  <Label className="text-sm">
-                    {timeRange === "hourly" ? "Hourly" : "Daily"}
-                  </Label>
-                </div>
-              </div>
-            )}
-
+            {/* ⛔ Time Range block removed for Exceptions tab */}
             {cluster && onClusterChange && (
               <Select value={cluster} onValueChange={onClusterChange}>
                 <SelectTrigger className="w-[150px]">
@@ -270,40 +321,32 @@ export function GlobalContextBar({
               </Select>
             )}
 
-            {namespace && onNamespaceChange && (
-              <Select value={namespace} onValueChange={onNamespaceChange}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Namespace" />
-                </SelectTrigger>
-                <SelectContent>
-                  {namespaces.map((namespaceOption) => (
-                    <SelectItem key={namespaceOption} value={namespaceOption}>
-                      {namespaceOption === "all" ? "All Namespaces" : namespaceOption}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {pods.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">Pod:</Label>
+                <Select
+                  value={selectedPod}
+                  onValueChange={(val) => {
+                    setSelectedPod(val);
+                    onNamespaceChange?.(val); // reuse namespace prop as podname
+                  }}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select Pod" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pods.map((pod) => (
+                      <SelectItem key={pod} value={pod}>
+                        {pod}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
           </>
         )}
 
-        {/* Export Action */}
-        {onExportCsv && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            disabled={isExporting}
-            className="ml-auto"
-          >
-            {isExporting ? (
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            Export CSV
-          </Button>
-        )}
       </div>
 
       {/* Active Filters */}

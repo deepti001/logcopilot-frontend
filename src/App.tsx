@@ -30,8 +30,10 @@ export default function App() {
   // Exceptions state
   const [excTimeRange, setExcTimeRange] = useState<"hourly" | "daily">("hourly");
   const [excCluster, setExcCluster] = useState("all");
-  const [excNamespace, setExcNamespace] = useState("all");
+  // const [excNamespace, setExcNamespace] = useState("all");
   const [excActiveFilters, setExcActiveFilters] = useState<string[]>([]);
+  const [excPod, setExcPod] = useState("");
+
 
   useEffect(() => {
     (async () => {
@@ -68,9 +70,10 @@ export default function App() {
     // Reset corresponding state when filter is removed
     if (filter.startsWith("Cluster:")) {
       setExcCluster("all");
-    } else if (filter.startsWith("Namespace:")) {
-      setExcNamespace("all");
     }
+    //  else if (filter.startsWith("Namespace:")) {
+    //   setExcNamespace("all");
+    // }
   };
  
   const handleClusterChange = (value: string) => {
@@ -81,17 +84,6 @@ export default function App() {
       setExcActiveFilters([...excActiveFilters.filter(f => !f.startsWith("Cluster:")), clusterFilter]);
     } else if (value === "all") {
       setExcActiveFilters(excActiveFilters.filter(f => !f.startsWith("Cluster:")));
-    }
-  };
- 
-  const handleNamespaceChange = (value: string) => {
-    setExcNamespace(value);
-    const namespaceFilter = `Namespace: ${value}`;
-    
-    if (value !== "all" && !excActiveFilters.includes(namespaceFilter)) {
-      setExcActiveFilters([...excActiveFilters.filter(f => !f.startsWith("Namespace:")), namespaceFilter]);
-    } else if (value === "all") {
-      setExcActiveFilters(excActiveFilters.filter(f => !f.startsWith("Namespace:")));
     }
   };
  
@@ -145,8 +137,8 @@ export default function App() {
               onTimeRangeChange={activeTab === "exceptions" ? setExcTimeRange : undefined}
               cluster={activeTab === "exceptions" ? excCluster : undefined}
               onClusterChange={activeTab === "exceptions" ? handleClusterChange : undefined}
-              namespace={activeTab === "exceptions" ? excNamespace : undefined}
-              onNamespaceChange={activeTab === "exceptions" ? handleNamespaceChange : undefined}
+              namespace={activeTab === "exceptions" ? excPod : undefined}
+              onNamespaceChange={activeTab === "exceptions" ? setExcPod : undefined}
               activeFilters={activeTab === "vulnerabilities" ? vulnActiveFilters : excActiveFilters}
               onRemoveFilter={activeTab === "vulnerabilities" ? handleVulnFilterRemove : handleExcFilterRemove}
               onExportCsv={handleExportCsv}
@@ -175,9 +167,8 @@ export default function App() {
               <ExceptionsDashboard
                 environment={selectedEnvironment}
                 release={selectedRelease}
-                timeRange={excTimeRange}
                 cluster={excCluster}
-                namespace={excNamespace}
+                namespace={excPod}
                 activeFilters={excActiveFilters}
                 onFiltersChange={setExcActiveFilters}
               />
