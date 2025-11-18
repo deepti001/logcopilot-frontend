@@ -1,3 +1,4 @@
+// src/types/exceptions.ts
 export interface LogEntry {
   timestamp: string;          // ISO string from API
   message: string;

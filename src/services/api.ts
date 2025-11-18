@@ -1,3 +1,5 @@
+// src/services/api.ts
+
 const API = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 /** ========================
@@ -159,5 +161,27 @@ export async function getPods(environment: string): Promise<string[]> {
   if (!environment) return [];
   const r = await fetch(`${API}/v1/dashboard/pods?environment=${encodeURIComponent(environment)}`);
   if (!r.ok) throw new Error(`GET pods failed: ${r.status}`);
+  return await r.json();
+}
+
+
+/** ========================
+ *  LOG GROUPS SECTION
+ *  ======================== */
+export async function getLogGroups(environment: string): Promise<string[]> {
+  if (!environment) return [];
+  const r = await fetch(
+    `${API}/v1/dashboard/log-groups?environment=${encodeURIComponent(environment)}`
+  );
+  if (!r.ok) throw new Error(`GET log groups failed: ${r.status}`);
+  return await r.json();
+}
+
+/** ========================
+ *  RELEASES MAP SECTION
+ *  ======================== */
+export async function getReleases(): Promise<Record<string, string>> {
+  const r = await fetch(`${API}/v1/dashboard/releases`);
+  if (!r.ok) throw new Error(`GET releases failed: ${r.status}`);
   return await r.json();
 }

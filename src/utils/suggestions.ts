@@ -1,3 +1,4 @@
+// src/utils/suggestions.ts
 import type { VulnerabilityDTO } from "../types/vulnerability";
 import { suggestRemediation } from "../services/api";
 

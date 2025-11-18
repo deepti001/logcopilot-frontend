@@ -1,3 +1,5 @@
+// /src/components/Header.tsx
+
 import React from "react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -22,7 +24,6 @@ export function Header({
   onEnvironmentChange,
   onReleaseChange,
 }: HeaderProps) {
-  const releases = ["v2.1.4", "v2.1.3", "v2.1.2", "v2.1.1", "v2.1.0", "v2.0.9"];
 
   const envColor = (e: string) =>
     e.includes("prod") ? "bg-red-100 text-red-800"
@@ -67,22 +68,21 @@ export function Header({
             </Select>
           </div>
 
-          {/* Release */}
+          {/* Release (read-only, driven by selectedRelease) */}
           <div className="flex items-center space-x-2">
             <GitBranch className="h-4 w-4 text-muted-foreground" />
-            <Select value={selectedRelease} onValueChange={onReleaseChange}>
-              <SelectTrigger className="w-24">
-                <SelectValue placeholder="Select Release" />
+            <Select value={selectedRelease} disabled>
+              <SelectTrigger className="w-24 cursor-not-allowed opacity-70">
+                <SelectValue placeholder="Release" />
               </SelectTrigger>
               <SelectContent>
-                {releases.map((release) => (
-                  <SelectItem key={release} value={release}>
-                    {release}
-                  </SelectItem>
-                ))}
+                {selectedRelease && (
+                  <SelectItem value={selectedRelease}>{selectedRelease}</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
+
 
           {/* Badge */}
           <Badge className={currentEnv ? envColor(currentEnv) : "bg-gray-100 text-gray-800"}>

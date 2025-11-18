@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+// /src/components/GlobalContextBar.tsx
+
+import React, { useState, useEffect } from "react";
 import { Badge } from "./ui/badge";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -8,18 +10,19 @@ import { Button } from "./ui/button";
 import { Download, RefreshCw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "./ui/utils";
-import { getRepositories } from "../services/api";
-import { getPods } from "../services/api";
+import { getReleases, getRepositories, getPods } from "../services/api";
 
-interface GlobalContextBarProps {
+type GlobalContextBarProps = {
   environment: string;
+  onEnvironmentChange: (env: string) => void;
   release: string;
+  onReleaseChange: (release: string | null) => void;
   activeTab: string;
   // Vulnerabilities specific
   timePeriod?: string;
   onTimePeriodChange?: (value: string) => void;
-  repo?: string;
-  onRepoChange?: (value: string) => void;
+  repo?: string | null;
+  onRepoChange?: (value: string | null) => void;
   // Exceptions specific (kept in props for compatibility, but UI removed)
   timeRange?: "hourly" | "daily";
   onTimeRangeChange?: (value: "hourly" | "daily") => void;
@@ -35,20 +38,6 @@ interface GlobalContextBarProps {
 }
 
 const clusters = ["all", "prod-cluster", "staging-cluster", "dev-cluster"];
-const namespaces = [
-  "all",
-  "auth-ns",
-  "payments-ns",
-  "orders-ns",
-  "notifications-ns",
-  "user-ns",
-  "cache-ns",
-  "api-ns",
-  "features-ns",
-  "config-ns",
-  "testing-ns",
-  "perf-ns",
-];
 
 const timePeriods = [
   { value: "latest", label: "Latest" },
@@ -57,9 +46,11 @@ const timePeriods = [
   { value: "1-month", label: "1 Month" },
 ];
 
-export function GlobalContextBar({
+export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
   environment,
+  onEnvironmentChange,
   release,
+  onReleaseChange,
   activeTab,
   timePeriod,
   onTimePeriodChange,
@@ -74,7 +65,7 @@ export function GlobalContextBar({
   onRemoveFilter,
   onExportCsv,
   className,
-}: GlobalContextBarProps) {
+}: GlobalContextBarProps) => {
   const [isExporting, setIsExporting] = useState(false);
 
   const [isImageTagMode, setIsImageTagMode] = useState(false);
@@ -88,20 +79,56 @@ export function GlobalContextBar({
   const [pods, setPods] = useState<string[]>([]);
   const [selectedPod, setSelectedPod] = useState<string>("");
 
+  const [releasesMap, setReleasesMap] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+
+  // 🔹 Unified loader for environments + releases + repositories
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       try {
-        const repos = await getRepositories();
-        setRepositories(repos);
-        if (repos.length > 0) {
-          setSelectedRepo(repos[0]);
-          onRepoChange?.(repos[0]);
+        setLoading(true);
+        setError(null);
+
+        const [ rels, repos] = await Promise.all([
+          getReleases(),
+          getRepositories(),
+        ]);
+
+        if (cancelled) return;
+
+        // Save results
+        setReleasesMap(rels || []);
+        setRepositories(repos || []);
+
+        // Auto-select repo only once (like before)
+        if (repos && repos.length > 0) {
+          setSelectedRepo((prev) => {
+            const next = prev || repos[0];
+            if (!prev) {
+              onRepoChange?.(next);
+            }
+            return next;
+          });
         }
-      } catch (e) {
-        console.error("Failed to fetch repositories:", e);
+
+        setLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error("Failed to load initial release/repository data:", err);
+        setError("Failed to load context data");
+        setLoading(false);
       }
     })();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onRepoChange]);
 
   // ✅ Load pods whenever environment changes — only for Exceptions tab
   useEffect(() => {
@@ -135,7 +162,7 @@ export function GlobalContextBar({
         if (cancelled) return;
 
         // Cache & replace list
-        setPodsCache(prev => ({ ...prev, [environment]: data }));
+        setPodsCache((prev) => ({ ...prev, [environment]: data }));
         setPods(data);
 
         // Default to first pod
@@ -154,7 +181,18 @@ export function GlobalContextBar({
 
     fetchPods();
     return () => { cancelled = true; };
-  }, [environment, activeTab]);
+  }, [environment, activeTab, onNamespaceChange, podsCache, selectedPod]);
+
+  // 🔄 Auto-update release based on environment → releasesMap
+  useEffect(() => {
+    if (!environment || !onReleaseChange) return;
+
+    const mapped = releasesMap[environment];
+    if (mapped && mapped !== release) {
+      onReleaseChange(mapped);
+    }
+  }, [environment, releasesMap, release, onReleaseChange]);
+
 
   const handleRepoChange = (value: string) => {
     setSelectedRepo(value);
@@ -215,7 +253,20 @@ export function GlobalContextBar({
         <div className="flex items-center gap-2">
           <Label className="text-sm font-medium">Env:</Label>
           <Badge variant="outline" className="font-mono">
-            {environment}
+            {environment || "—"}
+          </Badge>
+        </div>
+
+        {/* 🔒 Release (non-clickable, driven by environment → releases map) */}
+        <div className="flex items-center gap-2">
+          <Label className="text-sm font-medium">Release:</Label>
+          <Badge
+            variant="outline"
+            className="font-mono opacity-70 cursor-not-allowed select-none"
+          >
+            {release ||
+              (environment && releasesMap[environment]) ||
+              "—"}
           </Badge>
         </div>
 

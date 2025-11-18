@@ -1,3 +1,4 @@
+// src/App.tsx
 import { useState, useEffect } from "react";
 import { getEnvironments } from "./services/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
@@ -16,7 +17,7 @@ export default function App() {
   const [envsLoading, setEnvsLoading] = useState(true);
 
   const [selectedEnvironment, setSelectedEnvironment] = useState("");
-  const [selectedRelease, setSelectedRelease] = useState("v2.1.4");
+  const [selectedRelease, setSelectedRelease] = useState("R24");    // default R24
   const [activeTab, setActiveTab] = useState("vulnerabilities");
   // rows to export (fed by VulnerabilityDashboard)
   const [exportRows, setExportRows] = useState<any[]>([]);
@@ -114,7 +115,7 @@ export default function App() {
         selectedEnvironment={selectedEnvironment}
         selectedRelease={selectedRelease}
         onEnvironmentChange={setSelectedEnvironment}
-        onReleaseChange={setSelectedRelease}
+        onReleaseChange={(value) => setSelectedRelease(value ?? "")}
       />
       
       <div className="grid grid-cols-12 gap-6 p-6">
@@ -143,7 +144,10 @@ export default function App() {
               onRemoveFilter={activeTab === "vulnerabilities" ? handleVulnFilterRemove : handleExcFilterRemove}
               onExportCsv={handleExportCsv}
               repo={selectedRepo}
-              onRepoChange={setSelectedRepo}
+              onRepoChange={(value) => setSelectedRepo(value ?? "")}
+              onEnvironmentChange={setSelectedEnvironment}
+              onReleaseChange={(value) => setSelectedRelease(value ?? "")}
+
             />
             
             <TabsContent value="vulnerabilities" className="space-y-6">
