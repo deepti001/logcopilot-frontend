@@ -68,9 +68,9 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
 }: GlobalContextBarProps) => {
   const [isExporting, setIsExporting] = useState(false);
 
-  const [isImageTagMode, setIsImageTagMode] = useState(false);
+  const [isImageTagMode, setIsImageTagMode] = useState(true);
   const [imageTagInput, setImageTagInput] = useState("");
-  const [appliedImageTag, setAppliedImageTag] = useState<string | null>(null);
+  const [appliedImageTag, setAppliedImageTag] = useState<string | null>("sha256%253Af23d3c412b6aab5cf708fb5e7ecaa24bb0681fff3e693e628c13629480bd1d41");
 
   const [repositories, setRepositories] = useState<string[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string>("");
@@ -215,9 +215,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
     const scopes: string[] = [];
     if (activeTab === "vulnerabilities") {
       if (isImageTagMode) {
-        scopes.push(
-          appliedImageTag ? `Image Digest (${appliedImageTag})` : "Image Digest"
-        );
+        scopes.push("Image Digest");
       } else if (timePeriod && timePeriod !== "latest") {
         scopes.push(timePeriods.find((tp) => tp.value === timePeriod)?.label || timePeriod);
       } else if (timePeriod === "latest") {
