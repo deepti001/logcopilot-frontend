@@ -46,6 +46,7 @@ function PaginationLink({
   className,
   isActive,
   size = "icon",
+  children,
   ...props
 }: PaginationLinkProps) {
   return (
@@ -61,9 +62,12 @@ function PaginationLink({
         className,
       )}
       {...props}
-    />
+    >
+      {children || <span className="sr-only"></span>}
+    </a>
   );
 }
+
 
 function PaginationPrevious({
   className,

@@ -27,7 +27,9 @@ export default function App() {
   const [seedSuggestions, setSeedSuggestions] = useState<Record<string, string>>({});
   
   // Vulnerabilities state
-  const [vulnTimePeriod, setVulnTimePeriod] = useState("latest");
+  const [vulnTimePeriod, setVulnTimePeriod] = useState<
+    "latest" | "1-day" | "1-week" | "1-month" | `image-digest:${string}`
+  >("latest");
   const [vulnActiveFilters, setVulnActiveFilters] = useState<string[]>([]);
   const [selectedRepo, setSelectedRepo] = useState("");
 

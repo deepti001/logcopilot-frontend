@@ -25,7 +25,7 @@ async function fetchSuggestionFor(v: VulnerabilityDTO): Promise<string> {
     severity: v.severity || "",
     package_name: v.package_name,
     package_version: v.package_version,
-    description: v.description || v.nvd_description || "",
+    description: v.description || "",
   });
 
   const text = res?.suggestion || "";

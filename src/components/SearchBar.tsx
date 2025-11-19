@@ -92,11 +92,15 @@ export function SearchBar({ environment, release }: SearchBarProps) {
             {environment} • {release}
           </Badge>
         </div>
-        
+
         <div className="flex space-x-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <label htmlFor="ai-search-query" className="sr-only">
+              Ask about vulnerabilities, exceptions, or coverage
+            </label>
             <Input
+              id="ai-search-query"
               placeholder="Ask anything about your vulnerabilities, exceptions, or coverage..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}

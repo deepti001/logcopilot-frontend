@@ -60,7 +60,7 @@ export function Header({
               onValueChange={onEnvironmentChange}
               disabled={environmentsLoading || environments.length === 0}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48" aria-label="Select environment">
                 <SelectValue placeholder={environmentsLoading ? "Loading..." : "Select Environment"} />
               </SelectTrigger>
               <SelectContent>
@@ -84,7 +84,7 @@ export function Header({
               onValueChange={onLogGroupChange}
               disabled={logGroupsLoading || logGroups.length === 0}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48" aria-label="Select log group">
                 <SelectValue placeholder={logGroupsLoading ? "Loading..." : "Select Log Group"} />
               </SelectTrigger>
               <SelectContent>
@@ -101,7 +101,10 @@ export function Header({
           <div className="flex items-center space-x-2">
             <GitBranch className="h-4 w-4 text-muted-foreground" />
             <Select value={selectedRelease} disabled>
-              <SelectTrigger className="w-24 cursor-not-allowed opacity-70">
+              <SelectTrigger
+                className="w-24 cursor-not-allowed opacity-70"
+                aria-label="Selected release"
+              >
                 <SelectValue placeholder="Release" />
               </SelectTrigger>
               <SelectContent>

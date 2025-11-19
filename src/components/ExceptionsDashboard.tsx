@@ -43,11 +43,16 @@ type BackendLogEntry = {
   log_group?: string | null;
 };
 
+type BackendLogEntryType = {
+  type: string;
+  count: number;
+};
+
 type BackendExceptionsResponse = {
   count: number;
   exceptions: BackendLogEntry[];
   summary: string; // markdown-ish text
-  log_entry_types: BackendLogEntry[];
+  log_entry_types: BackendLogEntryType[];
 };
 
 interface ExceptionsDashboardProps {
@@ -59,6 +64,7 @@ interface ExceptionsDashboardProps {
   logGroupName?: string;
   applyNonce?: number;
   activeFilters?: string[];
+  // eslint-disable-next-line no-unused-vars
   onFiltersChange?: (filters: string[]) => void;
 }
 
@@ -84,10 +90,11 @@ export function ExceptionsDashboard({
   release,
   cluster = "all",
   namespace,
+  // eslint-disable-next-line no-unused-vars
   logGroupName,
   applyNonce = 0,
 }: ExceptionsDashboardProps) {
-  const [hours, setHours] = useState<number>(5); // 1, 2, 3, 4    - check if needed to be removed and 
+  // const [hours, setHours] = useState<number>(5); // 1, 2, 3, 4    - check if needed to be removed and 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<string | null>(null);
 
@@ -120,7 +127,6 @@ export function ExceptionsDashboard({
         startTime,
         endTime,
         namespace,
-        logGroupName,
       );
 
       setRaw(data);
@@ -142,13 +148,13 @@ export function ExceptionsDashboard({
   useEffect(() => {
     if (!namespace || hasLoadedInitial) return;
     setHasLoadedInitial(true);
-    fetchExceptions();
+    void fetchExceptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [namespace, hasLoadedInitial]);
 
   useEffect(() => {
     if (!applyNonce) return;
-    fetchExceptions(true);
+    void fetchExceptions(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyNonce]);
 
@@ -246,12 +252,13 @@ export function ExceptionsDashboard({
     const oom = rows.filter(r => /OutOfMemory/i.test(r.type)).length;
 
     // tiny deltas to keep your existing styling
+    const delta = { value: 0, type: "increase" } as const;
     return [
-      { label: "Total Exceptions", value: total, delta: 0, deltaType: "increase", icon: AlertCircle, color: "text-blue-600" },
-      { label: "High/Critical", value: high, delta: 0, deltaType: "increase", icon: AlertCircle, color: "text-red-600" },
-      { label: "Timeouts", value: timeouts, delta: 0, deltaType: "increase", icon: AlertCircle, color: "text-yellow-600" },
-      { label: "OOMKilled", value: oom, delta: 0, deltaType: "increase", icon: AlertCircle, color: "text-orange-600" },
-      { label: "Unique Services", value: raw?.log_entry_types?.length, delta: 0, deltaType: "increase", icon: AlertCircle, color: "text-green-600" },
+      { label: "Total Exceptions", value: total, delta, icon: AlertCircle, color: "text-blue-600" },
+      { label: "High/Critical", value: high, delta, icon: AlertCircle, color: "text-red-600" },
+      { label: "Timeouts", value: timeouts, delta, icon: AlertCircle, color: "text-yellow-600" },
+      { label: "OOMKilled", value: oom, delta, icon: AlertCircle, color: "text-orange-600" },
+      { label: "Unique Services", value: raw?.log_entry_types?.length ?? 0, delta, icon: AlertCircle, color: "text-green-600" },
     ] as const;
   }, [rows]);
 
@@ -307,18 +314,18 @@ export function ExceptionsDashboard({
   /** ===== LLM summary (regenerate) ===== */
   const [isSummarizing, setIsSummarizing] = useState(false);
 
-  async function regenerateSummary() {
-  try {
-    setIsSummarizing(true);
-    // ✅ restore original backend summary on Refresh click
-    setAiSummary(originalSummary || "No original summary available");
-    toast.success("Restored original AI summary");
-  } catch (e: any) {
-    toast.error(`Failed to restore summary: ${e?.message || "unknown error"}`);
-  } finally {
-    setIsSummarizing(false);
+  function regenerateSummary() {
+    try {
+      setIsSummarizing(true);
+      // ✅ restore original backend summary on Refresh click
+      setAiSummary(originalSummary || "No original summary available");
+      toast.success("Restored original AI summary");
+    } catch (e: any) {
+      toast.error(`Failed to restore summary: ${e?.message || "unknown error"}`);
+    } finally {
+      setIsSummarizing(false);
+    }
   }
-}
 
 
   const handleCustomPromptSubmit = async (
@@ -380,7 +387,7 @@ export function ExceptionsDashboard({
         await navigator.clipboard.writeText(text || "");
         // toast.success(`${label} copied`);
       } catch {
-        // toast.error(`Failed to copy ${label}`);
+        toast.error(`Failed to copy ${label}`);
       }
     };
 
@@ -467,8 +474,6 @@ export function ExceptionsDashboard({
 
 
   // --- Pagination helpers computed from rows ---
-  const totalRows = rows.length;
-  const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
   const paginatedRows = useMemo(() => {
     const start = (currentPage - 1) * rowsPerPage;
     const end = currentPage * rowsPerPage;
@@ -480,8 +485,10 @@ export function ExceptionsDashboard({
       <ErrorState
         title="Failed to load exceptions data"
         description={hasError}
-        // onRetry={() => { setHasError(null); setHours(h => h); }}
-        onRetry={() => { setHasError(null); setReloadFlag((flag) => flag + 1); }}
+        onRetry={() => {
+          setHasError(null);
+          void fetchExceptions(true);
+        }}
         retryLabel="Try Again"
       />
     );
@@ -501,11 +508,14 @@ export function ExceptionsDashboard({
         {/* New Time Filter Controls */}
         <div className="flex items-center gap-3">
           {/* Type Selector */}
+          <Label htmlFor="time-mode-select" className="sr-only">
+            Select time filter mode
+          </Label>
           <Select
             value={timeMode}
             onValueChange={(v: "hours" | "minutes" | "time-range") => setTimeMode(v)}
           >
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger id="time-mode-select" className="w-[140px]" aria-label="Time filter type">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -524,6 +534,7 @@ export function ExceptionsDashboard({
               value={timeValue}
               onChange={(e) => setTimeValue(Number(e.target.value))}
               placeholder={`Enter ${timeMode}`}
+              aria-label={`Enter ${timeMode}`}
               className="w-[140px] rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary ml-2 mr-2"
             />
 
@@ -533,6 +544,7 @@ export function ExceptionsDashboard({
                 type="datetime-local"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
+                aria-label="Start time"
                 className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
               />
               <span className="text-muted-foreground">to</span>
@@ -540,6 +552,7 @@ export function ExceptionsDashboard({
                 type="datetime-local"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
+                aria-label="End time"
                 className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -549,7 +562,7 @@ export function ExceptionsDashboard({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchExceptions(true)}
+            onClick={() => void fetchExceptions(true)}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Apply
@@ -571,7 +584,6 @@ export function ExceptionsDashboard({
               title={kpi.label}
               value={kpi.value}
               delta={kpi.delta}
-              deltaType={kpi.deltaType as any}
               icon={kpi.icon}
               iconColor={kpi.color}
             />

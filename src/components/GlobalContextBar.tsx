@@ -12,15 +12,17 @@ import { AnimatePresence, motion } from "motion/react";
 import { cn } from "./ui/utils";
 import { getReleases, getRepositories, getPods } from "../services/api";
 
+type TimePeriodValue = "latest" | "1-day" | "1-week" | "1-month" | `image-digest:${string}`;
+
 type GlobalContextBarProps = {
   environment: string;
-  onEnvironmentChange: (env: string) => void;
+  // onEnvironmentChange: (env: string) => void;
   release: string;
   onReleaseChange: (release: string | null) => void;
   activeTab: string;
   // Vulnerabilities specific
-  timePeriod?: string;
-  onTimePeriodChange?: (value: string) => void;
+  timePeriod?: TimePeriodValue;
+  onTimePeriodChange?: (value: TimePeriodValue) => void;
   repo?: string | null;
   onRepoChange?: (value: string | null) => void;
   // Exceptions specific (kept in props for compatibility, but UI removed)
@@ -49,7 +51,7 @@ const timePeriods = [
 
 export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
   environment,
-  onEnvironmentChange,
+  // onEnvironmentChange,
   release,
   onReleaseChange,
   activeTab,
@@ -72,7 +74,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
 
   const [isImageTagMode, setIsImageTagMode] = useState(false);
   const [imageTagInput, setImageTagInput] = useState("");
-  const [appliedImageTag, setAppliedImageTag] = useState<string | null>("");
+  const [_appliedImageTag, setAppliedImageTag] = useState<string | null>("");
 
   const [repositories, setRepositories] = useState<string[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string>("");
@@ -82,15 +84,15 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
   const [selectedPod, setSelectedPod] = useState<string>("");
 
   const [releasesMap, setReleasesMap] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState<string | null>(null);
 
 
   // 🔹 Unified loader for environments + releases + repositories
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
+    void (async () => {
       try {
         setLoading(true);
         setError(null);
@@ -181,7 +183,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
       }
     }
 
-    fetchPods();
+    void fetchPods();
     return () => { cancelled = true; };
   }, [environment, activeTab, onNamespaceChange, podsCache, selectedPod]);
 
@@ -206,7 +208,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
 
     setIsExporting(true);
     try {
-      await onExportCsv();
+      await Promise.resolve(onExportCsv());
     } finally {
       setIsExporting(false);
     }
@@ -296,8 +298,12 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
 
               {isImageTagMode ? (
                 <form onSubmit={applyImageTag} className="flex items-center gap-2">
+                  <Label htmlFor="image-digest-input" className="sr-only">
+                    Image digest
+                  </Label>
                   <input
                     type="text"
+                    id="image-digest-input"
                     value={imageTagInput}
                     onChange={(e) => setImageTagInput(e.target.value)}
                     placeholder="Enter image digest"
@@ -313,7 +319,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
               <div className="flex items-center gap-2">
                 <Label className="text-sm font-medium">Repo:</Label>
                 <Select value={selectedRepo} onValueChange={handleRepoChange}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-[200px]" aria-label="Select repository">
                     <SelectValue placeholder="Select Repo" />
                   </SelectTrigger>
                   <SelectContent>
@@ -332,7 +338,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleExport}
+                onClick={() => void handleExport()}
                 disabled={isExporting}
                 className="ml-auto"
               >
@@ -352,7 +358,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
             {/* ⛔ Time Range block removed for Exceptions tab */}
             {cluster && onClusterChange && (
               <Select value={cluster} onValueChange={onClusterChange}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[150px]" aria-label="Select cluster">
                   <SelectValue placeholder="Cluster" />
                 </SelectTrigger>
                 <SelectContent>
@@ -375,7 +381,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
                     onNamespaceChange?.(val); // reuse namespace prop as podname
                   }}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px]" aria-label="Select pod">
                     <SelectValue placeholder="Select Pod" />
                   </SelectTrigger>
                   <SelectContent>

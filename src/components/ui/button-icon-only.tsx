@@ -4,42 +4,32 @@ import { Button, ButtonProps } from "./button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 import { cn } from "./utils";
 
-interface ButtonIconOnlyProps extends Omit<ButtonProps, 'children'> {
+interface ButtonIconOnlyProps extends Omit<ButtonProps, "children" | "variant"> {
   icon: LucideIcon;
   tooltip: string;
-  variant?: "view" | "copy" | "jira" | "default";
+  tone?: "view" | "copy" | "jira" | "default";
 }
 
-const variantStyles = {
+const variantStyles: Record<NonNullable<ButtonIconOnlyProps["tone"]>, string> = {
   view: "hover:bg-blue-50 hover:text-blue-600",
-  copy: "hover:bg-green-50 hover:text-green-600", 
+  copy: "hover:bg-green-50 hover:text-green-600",
   jira: "hover:bg-purple-50 hover:text-purple-600",
-  default: ""
+  default: "",
 };
 
 export const ButtonIconOnly = React.forwardRef<
   HTMLButtonElement,
   ButtonIconOnlyProps
->(({ 
-  icon: Icon, 
-  tooltip, 
-  variant = "default",
-  className,
-  ...props 
-}, ref) => {
+>(({ icon: Icon, tooltip, tone = "default", className, ...props }, ref) => {
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button 
+          <Button
             ref={ref}
-            variant="ghost" 
-            size="sm" 
-            className={cn(
-              "h-8 w-8 p-0",
-              variantStyles[variant],
-              className
-            )}
+            variant="ghost"
+            size="sm"
+            className={cn("h-8 w-8 p-0", variantStyles[tone], className)}
             aria-label={tooltip}
             {...props}
           >

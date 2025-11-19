@@ -1,4 +1,5 @@
 // src/components/RemediationDrawer.tsx
+import React from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   Sheet,
@@ -11,7 +12,6 @@ import {
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Separator } from "./ui/separator";
 import { ExternalLink, Copy, Sparkles, AlertTriangle, FileText, Plus } from "lucide-react";
 import { VulnerabilityRecord } from "../types/vulnerability";
 import { toast } from "sonner";
@@ -51,7 +51,7 @@ export function RemediationDrawer({ vulnerability, children, aiText }: Remediati
       toast.error(`No ${type.toLowerCase()} to copy`);
       return;
     }
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     toast.success(`${type} copied to clipboard`);
   };
 
@@ -227,24 +227,24 @@ export function RemediationDrawer({ vulnerability, children, aiText }: Remediati
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Description</label>
+                <div className="text-sm font-medium text-muted-foreground">Description</div>
                 <p className="mt-1">{(vulnerability as any).description}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">First Seen (Build)</label>
+                  <div className="text-sm font-medium text-muted-foreground">First Seen (Build)</div>
                   <p className="mt-1 font-mono text-sm">{formatFirstSeenBuild(vulnerability)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">First Seen (Time, IST)</label>
+                  <div className="text-sm font-medium text-muted-foreground">First Seen (Time, IST)</div>
                   <p className="mt-1 font-mono text-sm">{formatFirstSeenTime(vulnerability)}</p>
                 </div>
               </div>
 
               {(vulnerability as any).layer && (
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Affected Layer</label>
+                  <div className="text-sm font-medium text-muted-foreground">Affected Layer</div>
                   <p className="mt-1 font-mono text-sm">{(vulnerability as any).layer}</p>
                 </div>
               )}

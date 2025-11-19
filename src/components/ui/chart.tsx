@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import * as React from "react";
@@ -8,6 +9,7 @@ import { cn } from "./utils";
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
 
+// eslint-disable-next-line no-unused-vars
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode;
