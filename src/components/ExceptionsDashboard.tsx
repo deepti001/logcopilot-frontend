@@ -47,6 +47,7 @@ type BackendExceptionsResponse = {
   count: number;
   exceptions: BackendLogEntry[];
   summary: string; // markdown-ish text
+  log_entry_types: BackendLogEntry[];
 };
 
 interface ExceptionsDashboardProps {
@@ -55,6 +56,7 @@ interface ExceptionsDashboardProps {
   /** Not used by backend — kept to preserve UI. */
   cluster?: string;
   namespace?: string;
+  logGroupName?: string;
   activeFilters?: string[];
   onFiltersChange?: (filters: string[]) => void;
 }
@@ -81,8 +83,9 @@ export function ExceptionsDashboard({
   release,
   cluster = "all",
   namespace,
+  logGroupName,
 }: ExceptionsDashboardProps) {
-  const [hours, setHours] = useState<number>(24); // 1, 2, 3, 4
+  const [hours, setHours] = useState<number>(5); // 1, 2, 3, 4    - check if needed to be removed and 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<string | null>(null);
 
@@ -94,10 +97,11 @@ export function ExceptionsDashboard({
   const [promptText, setPromptText] = useState<string>("Summarize recent failures");
   const [nlpLoading, setNlpLoading] = useState<boolean>(false);
 
-  const [timeMode, setTimeMode] = useState<"hours" | "minutes" | "time-range">("hours");
-  const [timeValue, setTimeValue] = useState<number>(24);
+  const [timeMode, setTimeMode] = useState<"hours" | "minutes" | "time-range">("minutes");
+  const [timeValue, setTimeValue] = useState<number>(5);
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
+  const [reloadFlag, setReloadFlag] = useState(0);
 
 
   // --- Pagination state (10 rows per page) ---
@@ -113,7 +117,14 @@ export function ExceptionsDashboard({
       try {
         setIsLoading(true);
         setHasError(null);
-        const data = await getExceptions(timeMode, timeValue, startTime, endTime, namespace);
+        const data = await getExceptions(
+          timeMode,
+          timeValue,
+          startTime,
+          endTime,
+          namespace,
+          logGroupName,
+        );
         if (aborted) return;
 
         setRaw(data);
@@ -131,7 +142,41 @@ export function ExceptionsDashboard({
     })();
 
     return () => { aborted = true; };
-  }, [hours, namespace]);
+  }, [namespace, timeMode, timeValue, startTime, endTime, logGroupName, reloadFlag]);
+
+  const windowLabel = useMemo(() => {
+    if (timeMode === "hours" && timeValue) {
+      return `last ${timeValue} hour${timeValue === 1 ? "" : "s"}`;
+    }
+    if (timeMode === "minutes" && timeValue) {
+      return `last ${timeValue} minute${timeValue === 1 ? "" : "s"}`;
+    }
+    if (timeMode === "time-range" && startTime && endTime) {
+      const startDate = new Date(startTime);
+      const endDate = new Date(endTime);
+      if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+        return `${startDate.toLocaleString()} – ${endDate.toLocaleString()}`;
+      }
+    }
+    return "selected window";
+  }, [timeMode, timeValue, startTime, endTime]);
+
+  const timeframeHours = useMemo(() => {
+    if (timeMode === "hours" && timeValue) {
+      return Math.max(timeValue, 1 / 60);
+    }
+    if (timeMode === "minutes" && timeValue) {
+      return Math.max(timeValue / 60, 1 / 60);
+    }
+    if (timeMode === "time-range" && startTime && endTime) {
+      const startMs = Date.parse(startTime);
+      const endMs = Date.parse(endTime);
+      if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs > startMs) {
+        return Math.max((endMs - startMs) / 3_600_000, 1 / 60);
+      }
+    }
+    return 1;
+  }, [timeMode, timeValue, startTime, endTime]);
 
   /** ===== Heuristics & helpers ===== */
   function mapBackendLogToRow(e: BackendLogEntry, idx: number): ExceptionRow {
@@ -198,20 +243,31 @@ export function ExceptionsDashboard({
       { label: "High/Critical", value: high, delta: 0, deltaType: "increase", icon: AlertCircle, color: "text-red-600" },
       { label: "Timeouts", value: timeouts, delta: 0, deltaType: "increase", icon: AlertCircle, color: "text-yellow-600" },
       { label: "OOMKilled", value: oom, delta: 0, deltaType: "increase", icon: AlertCircle, color: "text-orange-600" },
-      { label: "Unique Services", value: new Set(rows.map(r => r.servicePod)).size, delta: 0, deltaType: "increase", icon: AlertCircle, color: "text-green-600" },
+      { label: "Unique Services", value: raw?.log_entry_types?.length, delta: 0, deltaType: "increase", icon: AlertCircle, color: "text-green-600" },
     ] as const;
   }, [rows]);
 
   /** ===== Simple chart data (group by type over time “buckets”) ===== */
   const chartData = useMemo(() => {
     // Make 6 buckets for the selected window
-    const bucketCount = 6;
-    const start = Date.now() - hours * 3600_000;
-    const end = start + hours * 3600_000;
-    const bucketMs = (hours * 3600_000) / bucketCount;
+    if (!rows.length) return [];
+    const timestamps = rows
+      .map((r) => r.tsMs)
+      .filter((ts) => Number.isFinite(ts)) as number[];
 
+    if (!timestamps.length) return [];
+
+    const minTs = Math.min(...timestamps);
+    const maxTs = Math.max(...timestamps);
+    const span = Math.max(maxTs - minTs, 60_000);
+    const bucketCount = 6;
+    const bucketMs = Math.max(span / bucketCount, 1);
+    const formatOpts: Intl.DateTimeFormatOptions = span > 86_400_000
+      ? { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }
+      : { hour: "2-digit", minute: "2-digit" };
+    
     const buckets = Array.from({ length: bucketCount }, (_, i) => ({
-      time: new Date(start + i * bucketMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: new Date(minTs + i * bucketMs).toLocaleString([], formatOpts),
       OutOfMemoryError: 0,
       NullPointerException: 0,
       ConnectionTimeout: 0,
@@ -224,11 +280,10 @@ export function ExceptionsDashboard({
     rows.forEach((r) => {
       const ts = r.tsMs;
       if (!Number.isFinite(ts)) return;
-      if (ts < start || ts > end) return;
 
       const idx = Math.min(
-        buckets.length - 1,
-        Math.max(0, Math.floor((ts - start) / bucketMs))
+        bucketCount - 1,
+        Math.max(0, Math.floor((ts - minTs) / bucketMs))
       );
 
       const key = (["OutOfMemoryError","NullPointerException","ConnectionTimeout","RateLimitExceeded","InternalServerError","Neo4jClientError"] as const)
@@ -239,7 +294,7 @@ export function ExceptionsDashboard({
     });
 
     return buckets;
-  }, [rows, hours]);
+  }, [rows]);
 
   /** ===== LLM summary (regenerate) ===== */
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -273,7 +328,9 @@ export function ExceptionsDashboard({
       setNlpLoading(true);
       const res = await postLogsNlp({
         query,
-        timeframe: { hours }, // use your existing hours state
+        // timeframe: { hours }, // use your existing hours state
+        timeframe: { hours: timeframeHours },
+
       });
       // res.answer is a markdown string from the backend
       setAiSummary(res.answer);
@@ -415,7 +472,8 @@ export function ExceptionsDashboard({
       <ErrorState
         title="Failed to load exceptions data"
         description={hasError}
-        onRetry={() => { setHasError(null); setHours(h => h); }}
+        // onRetry={() => { setHasError(null); setHours(h => h); }}
+        onRetry={() => { setHasError(null); setReloadFlag((flag) => flag + 1); }}
         retryLabel="Try Again"
       />
     );
@@ -487,7 +545,14 @@ export function ExceptionsDashboard({
               try {
                 setIsLoading(true);
                 setHasError(null);
-                const data = await getExceptions(timeMode, timeValue, startTime, endTime, namespace);
+                const data = await getExceptions(
+                  timeMode,
+                  timeValue,
+                  startTime,
+                  endTime,
+                  namespace,
+                  logGroupName,
+                );
                 setRaw(data);
                 setOriginalSummary(data.summary || "");
                 setAiSummary(data.summary || "");
@@ -627,7 +692,7 @@ export function ExceptionsDashboard({
             <div>
               <CardTitle>Exceptions ({rows.length})</CardTitle>
               <CardDescription>
-                Showing raw exception lines from backend (window: last {hours}h)
+                Showing raw exception lines from backend ({windowLabel})
               </CardDescription>
             </div>
           </div>

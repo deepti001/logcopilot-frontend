@@ -1,6 +1,6 @@
 // src/App.tsx
 import { useState, useEffect } from "react";
-import { getEnvironments } from "./services/api";
+import { getEnvironments, getLogGroups } from "./services/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { Header } from "./components/Header";
 import { GlobalContextBar } from "./components/GlobalContextBar";
@@ -15,8 +15,11 @@ import { enrichWithSuggestions, suggestionKey } from "./utils/suggestions";
 export default function App() {
   const [envs, setEnvs] = useState<string[]>([]);
   const [envsLoading, setEnvsLoading] = useState(true);
+  const [logGroups, setLogGroups] = useState<string[]>([]);
+  const [logGroupsLoading, setLogGroupsLoading] = useState(false);
 
   const [selectedEnvironment, setSelectedEnvironment] = useState("");
+  const [selectedLogGroup, setSelectedLogGroup] = useState("");
   const [selectedRelease, setSelectedRelease] = useState("R24");    // default R24
   const [activeTab, setActiveTab] = useState("vulnerabilities");
   // rows to export (fed by VulnerabilityDashboard)
@@ -54,6 +57,41 @@ export default function App() {
       }
     })();
   }, []); 
+
+  useEffect(() => {
+    if (!selectedEnvironment) {
+      setLogGroups([]);
+      setSelectedLogGroup("");
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setLogGroupsLoading(true);
+        const groups = await getLogGroups(selectedEnvironment);
+        if (cancelled) return;
+        setLogGroups(groups);
+        setSelectedLogGroup((prev) =>
+          groups.length === 0 ? "" : groups.includes(prev) ? prev : groups[0]
+        );
+      } catch (e) {
+        if (!cancelled) {
+          console.error("Failed to fetch log groups", e);
+          setLogGroups([]);
+          setSelectedLogGroup("");
+        }
+      } finally {
+        if (!cancelled) {
+          setLogGroupsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEnvironment]);
 
   useEffect(() => {
     if (envs.length && !envs.includes(selectedEnvironment)) {
@@ -113,8 +151,12 @@ export default function App() {
         environments={envs}
         environmentsLoading={envsLoading}
         selectedEnvironment={selectedEnvironment}
+        logGroups={logGroups}
+        logGroupsLoading={logGroupsLoading}
+        selectedLogGroup={selectedLogGroup}
         selectedRelease={selectedRelease}
         onEnvironmentChange={setSelectedEnvironment}
+        onLogGroupChange={setSelectedLogGroup}
         onReleaseChange={(value) => setSelectedRelease(value ?? "")}
       />
       
@@ -173,6 +215,7 @@ export default function App() {
                 release={selectedRelease}
                 cluster={excCluster}
                 namespace={excPod}
+                logGroupName={selectedLogGroup}
                 activeFilters={excActiveFilters}
                 onFiltersChange={setExcActiveFilters}
               />

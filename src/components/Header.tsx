@@ -5,14 +5,18 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "./ui/select";
 import { Badge } from "./ui/badge";
-import { Clock, GitBranch, Globe } from "lucide-react";
+import { Clock, GitBranch, Globe, Layers } from "lucide-react";
 
 interface HeaderProps {
   environments: string[];
   environmentsLoading: boolean;
   selectedEnvironment: string;
+  logGroups: string[];
+  logGroupsLoading: boolean;
+  selectedLogGroup: string;
   selectedRelease: string;
   onEnvironmentChange: (env: string) => void;
+  onLogGroupChange: (logGroup: string) => void;
   onReleaseChange: (release: string) => void;
 }
 
@@ -20,8 +24,12 @@ export function Header({
   environments,
   environmentsLoading,
   selectedEnvironment,
+  logGroups,
+  logGroupsLoading,
+  selectedLogGroup,
   selectedRelease,
   onEnvironmentChange,
+  onLogGroupChange,
   onReleaseChange,
 }: HeaderProps) {
 
@@ -62,6 +70,27 @@ export function Header({
                       <div className={`w-2 h-2 rounded-full ${envColor(env).split(" ")[0]}`} />
                       <span>{env}</span>
                     </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Log Groups */}
+          <div className="flex items-center space-x-2">
+            <Layers className="h-4 w-4 text-muted-foreground" />
+            <Select
+              value={selectedLogGroup}
+              onValueChange={onLogGroupChange}
+              disabled={logGroupsLoading || logGroups.length === 0}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder={logGroupsLoading ? "Loading..." : "Select Log Group"} />
+              </SelectTrigger>
+              <SelectContent>
+                {logGroups.map((group) => (
+                  <SelectItem key={group} value={group}>
+                    {group}
                   </SelectItem>
                 ))}
               </SelectContent>

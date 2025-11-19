@@ -94,6 +94,10 @@ export async function getExceptions(
       log_group?: string | null;
     }[];
     summary: string;
+    log_entry_types: {
+      type: string;
+      count: number;
+    }[];
   };
 }
 
