@@ -45,7 +45,12 @@ export function Header({
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <h1 className="text-2xl font-bold">LogCopilot</h1>
-          <Badge variant="outline" className="flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="flex items-center gap-1"
+            aria-live="polite"
+            aria-label={`Last updated at ${new Date().toLocaleTimeString()}`}
+          >
             <Clock className="h-3 w-3" />
             Last Updated: {new Date().toLocaleTimeString()}
           </Badge>
@@ -60,14 +65,19 @@ export function Header({
               onValueChange={onEnvironmentChange}
               disabled={environmentsLoading || environments.length === 0}
             >
-              <SelectTrigger className="w-48" aria-label="Select environment">
+              <SelectTrigger
+                className="w-48"
+                aria-label="Select environment"
+                aria-busy={environmentsLoading}
+              >
                 <SelectValue placeholder={environmentsLoading ? "Loading..." : "Select Environment"} />
               </SelectTrigger>
               <SelectContent>
                 {environments.map((env) => (
                   <SelectItem key={env} value={env}>
                     <div className="flex items-center space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${envColor(env).split(" ")[0]}`} />
+                      <div className={`w-2 h-2 rounded-full ${envColor(env).split(" ")[0]}`} aria-hidden />
+                      <span className="sr-only">Environment {env}</span>
                       <span>{env}</span>
                     </div>
                   </SelectItem>
@@ -84,7 +94,11 @@ export function Header({
               onValueChange={onLogGroupChange}
               disabled={logGroupsLoading || logGroups.length === 0}
             >
-              <SelectTrigger className="w-48" aria-label="Select log group">
+              <SelectTrigger
+                className="w-48"
+                aria-label="Select log group"
+                aria-busy={logGroupsLoading}
+              >
                 <SelectValue placeholder={logGroupsLoading ? "Loading..." : "Select Log Group"} />
               </SelectTrigger>
               <SelectContent>

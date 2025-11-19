@@ -150,6 +150,12 @@ export default function App() {
  
   return (
     <div className="min-h-screen bg-background">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:m-4 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
       <Header
         environments={envs}
         environmentsLoading={envsLoading}
@@ -163,10 +169,10 @@ export default function App() {
         onReleaseChange={(value) => setSelectedRelease(value ?? "")}
       />
       
-      <div className="grid grid-cols-12 gap-6 p-6">
+      <main id="main-content" role="main" className="grid grid-cols-12 gap-6 p-6" aria-live="polite">
         <div className="col-span-12">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-3" aria-label="Primary dashboards">
               <TabsTrigger value="vulnerabilities">Vulnerabilities</TabsTrigger>
               <TabsTrigger value="exceptions">Exceptions</TabsTrigger>
               <TabsTrigger value="coverage">Coverage</TabsTrigger>
@@ -236,8 +242,8 @@ export default function App() {
             </TabsContent>
           </Tabs>
         </div>
-      </div>
-      
+      </main>
+
       <SearchBar
         environment={selectedEnvironment}
         release={selectedRelease}

@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { Target, TrendingUp, Code, TestTube } from "lucide-react";
 
@@ -189,18 +189,20 @@ export function CoverageDashboard({ environment, release }: CoverageDashboardPro
             <CardDescription>Coverage trends over time</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis domain={[50, 100]} />
-                <Tooltip formatter={(value) => [`${value}%`, ""]} />
-                <Line type="monotone" dataKey="unit" stroke="#3b82f6" strokeWidth={2} name="Unit Tests" />
-                <Line type="monotone" dataKey="integration" stroke="#10b981" strokeWidth={2} name="Integration" />
-                <Line type="monotone" dataKey="e2e" stroke="#f59e0b" strokeWidth={2} name="E2E Tests" />
-                <Line type="monotone" dataKey="security" stroke="#8b5cf6" strokeWidth={2} name="Security" />
-              </LineChart>
-            </ResponsiveContainer>
+            <div role="img" aria-label="Line chart showing coverage trends for unit, integration, end-to-end, and security tests">
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis domain={[50, 100]} />
+                  <Tooltip formatter={(value) => [`${value}%`, ""]} />
+                  <Line type="monotone" dataKey="unit" stroke="#3b82f6" strokeWidth={2} name="Unit Tests" />
+                  <Line type="monotone" dataKey="integration" stroke="#10b981" strokeWidth={2} name="Integration" />
+                  <Line type="monotone" dataKey="e2e" stroke="#f59e0b" strokeWidth={2} name="E2E Tests" />
+                  <Line type="monotone" dataKey="security" stroke="#8b5cf6" strokeWidth={2} name="Security" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
@@ -210,16 +212,18 @@ export function CoverageDashboard({ environment, release }: CoverageDashboardPro
             <CardDescription>Current coverage distribution</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={coverageData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip formatter={(value) => [`${value}%`, "Coverage"]} />
-                <Bar dataKey="current" fill="#3b82f6" />
-                <Bar dataKey="target" fill="#e5e7eb" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div role="img" aria-label="Bar chart comparing current and target coverage for each test type">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={coverageData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip formatter={(value) => [`${value}%`, "Coverage"]} />
+                  <Bar dataKey="current" fill="#3b82f6" />
+                  <Bar dataKey="target" fill="#e5e7eb" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -231,7 +235,10 @@ export function CoverageDashboard({ environment, release }: CoverageDashboardPro
           <CardDescription>Coverage metrics for each service</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table aria-live="polite">
+            <TableCaption>
+              Coverage details for {environment || "the selected environment"} — release {release || "N/A"}.
+            </TableCaption>
             <TableHeader>
               <TableRow>
                 <TableHead>Service</TableHead>

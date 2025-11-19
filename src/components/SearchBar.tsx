@@ -106,12 +106,17 @@ export function SearchBar({ environment, release }: SearchBarProps) {
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               className="pl-10"
+              aria-describedby="search-context"
             />
           </div>
-          <Button onClick={handleSearch} disabled={isSearching}>
+          <Button onClick={handleSearch} disabled={isSearching} aria-busy={isSearching} aria-live="polite">
             {isSearching ? "Analyzing..." : "Analyze"}
           </Button>
         </div>
+
+        <p id="search-context" className="sr-only">
+          Results are filtered by environment {environment || "not selected"} and release {release || "not selected"}.
+        </p>
 
         {!results.length && (
           <div className="space-y-2">
@@ -133,7 +138,7 @@ export function SearchBar({ environment, release }: SearchBarProps) {
         )}
 
         {results.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-3" aria-live="polite">
             <h4 className="font-medium">AI Analysis Results</h4>
             {results.map((result, index) => (
               <Card key={index}>

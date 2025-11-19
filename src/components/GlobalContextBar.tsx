@@ -252,19 +252,24 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
     <div className={cn("bg-background border-b p-4", className)}>
       <div className="flex flex-wrap items-center gap-4 mb-4">
         {/* Core Context */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" aria-live="polite">
           <Label className="text-sm font-medium">Env:</Label>
-          <Badge variant="outline" className="font-mono">
+          <Badge
+            variant="outline"
+            className="font-mono"
+            aria-label={`Selected environment ${environment || "none"}`}
+          >
             {environment || "—"}
           </Badge>
         </div>
 
         {/* 🔒 Release (non-clickable, driven by environment → releases map) */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" aria-live="polite">
           <Label className="text-sm font-medium">Release:</Label>
           <Badge
             variant="outline"
             className="font-mono opacity-70 cursor-not-allowed select-none"
+            aria-label={`Release ${release || (environment && releasesMap[environment]) || "not available"}`}
           >
             {release ||
               (environment && releasesMap[environment]) ||
@@ -296,24 +301,32 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
                 />
               </div>
 
-              {isImageTagMode ? (
-                <form onSubmit={applyImageTag} className="flex items-center gap-2">
-                  <Label htmlFor="image-digest-input" className="sr-only">
-                    Image digest
-                  </Label>
-                  <input
-                    type="text"
-                    id="image-digest-input"
-                    value={imageTagInput}
-                    onChange={(e) => setImageTagInput(e.target.value)}
-                    placeholder="Enter image digest"
-                    className="h-8 w-[220px] rounded-md border border-[var(--border)] bg-[var(--input-background)] px-2 text-sm outline-none focus:ring-2"
-                  />
-                  <Button type="submit" size="sm" variant="outline">
-                    Apply
-                  </Button>
-                </form>
-              ) : null}
+            {isImageTagMode ? (
+              <form
+                onSubmit={applyImageTag}
+                className="flex items-center gap-2"
+                aria-label="Apply image digest filter"
+              >
+                <Label htmlFor="image-digest-input" className="sr-only">
+                  Image digest
+                </Label>
+                <input
+                  type="text"
+                  id="image-digest-input"
+                  value={imageTagInput}
+                  onChange={(e) => setImageTagInput(e.target.value)}
+                  placeholder="Enter image digest"
+                  className="h-8 w-[220px] rounded-md border border-[var(--border)] bg-[var(--input-background)] px-2 text-sm outline-none focus:ring-2"
+                  aria-describedby="image-digest-helper"
+                />
+                <span id="image-digest-helper" className="sr-only">
+                  Provide the image digest to scope results to a specific build
+                </span>
+                <Button type="submit" size="sm" variant="outline">
+                  Apply
+                </Button>
+              </form>
+            ) : null}
 
               {/* Repo Dropdown */}
               <div className="flex items-center gap-2">
@@ -340,6 +353,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
                 size="sm"
                 onClick={() => void handleExport()}
                 disabled={isExporting}
+                aria-busy={isExporting}
                 className="ml-auto"
               >
                 {isExporting ? (
@@ -415,6 +429,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className="flex flex-wrap gap-2"
+            role="list"
           >
             {activeFilters.map((filter) => (
               <motion.div
@@ -422,6 +437,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
+                role="listitem"
               >
                 <ChipFilter
                   label={filter}

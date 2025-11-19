@@ -9,7 +9,7 @@ import { ErrorState } from "./ui/error-state";
 import { LoadingState } from "./ui/loading-state";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Skeleton } from "./ui/skeleton";
 import { Separator } from "./ui/separator";
@@ -651,26 +651,27 @@ export function ExceptionsDashboard({
         </CardHeader>
         {showPromptForm && (
           <div className="px-6 pb-4">
-            <form onSubmit={handleCustomPromptSubmit} className="flex gap-2 items-start">
-              <input
-                type="text"
-                value={promptText}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setPromptText(e.target.value)
-                }
-                placeholder='Ask something like: "Cluster by service and give counts; flag anomalies"'
-                className="flex-1 rounded-md border border-[var(--border)] bg-[var(--input-background)] px-3 py-2 text-sm outline-none focus:ring-2"
-              />
-              <Button type="submit" size="sm" disabled={nlpLoading}>
-                {nlpLoading ? "Generating..." : "Run"}
-              </Button>
-            </form>
-          </div>
-        )}
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-[90%]" />
+              <form onSubmit={handleCustomPromptSubmit} className="flex gap-2 items-start" aria-label="Generate custom AI summary">
+                <input
+                  type="text"
+                  value={promptText}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPromptText(e.target.value)
+                  }
+                  placeholder='Ask something like: "Cluster by service and give counts; flag anomalies"'
+                  className="flex-1 rounded-md border border-[var(--border)] bg-[var(--input-background)] px-3 py-2 text-sm outline-none focus:ring-2"
+                  aria-label="Custom summary prompt"
+                />
+                <Button type="submit" size="sm" disabled={nlpLoading}>
+                  {nlpLoading ? "Generating..." : "Run"}
+                </Button>
+              </form>
+            </div>
+          )}
+          <CardContent aria-live="polite" aria-busy={nlpLoading || isLoading}>
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-[90%]" />
               <Skeleton className="h-4 w-[80%]" />
               <Skeleton className="h-4 w-[70%]" />
             </div>
@@ -701,7 +702,10 @@ export function ExceptionsDashboard({
             <EmptyState variant="exceptions" />
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table aria-live="polite" aria-busy={isLoading}>
+                <TableCaption>
+                  Exceptions for {environment || "the selected environment"} — release {release || "N/A"} during {windowLabel}.
+                </TableCaption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Time</TableHead>

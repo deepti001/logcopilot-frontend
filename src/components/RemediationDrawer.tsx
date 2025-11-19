@@ -261,7 +261,11 @@ export function RemediationDrawer({ vulnerability, children, aiText }: Remediati
               <CardDescription>Recommended steps to resolve this vulnerability</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div
+                className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800"
+                aria-live="polite"
+                aria-busy={loading}
+              >
                 {loading && <p className="text-sm text-muted-foreground">Generating suggestion…</p>}
                 {!loading && error && <p className="text-sm text-red-600">{error}</p>}
                 {!loading && !error && (
@@ -331,7 +335,12 @@ export function RemediationDrawer({ vulnerability, children, aiText }: Remediati
                       <p className="text-sm text-muted-foreground">{link.description}</p>
                     </div>
                     <Button variant="ghost" size="sm" asChild>
-                      <a href={link.url} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open ${link.title} in a new tab`}
+                      >
                         <ExternalLink className="h-4 w-4" />
                       </a>
                     </Button>
