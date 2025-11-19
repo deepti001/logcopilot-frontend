@@ -1,6 +1,6 @@
 // /src/components/GlobalContextBar.tsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Badge } from "./ui/badge";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -87,6 +87,12 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
   const [_loading, setLoading] = useState(true);
   const [_error, setError] = useState<string | null>(null);
 
+  const onRepoChangeRef = useRef(onRepoChange);
+
+  useEffect(() => {
+    onRepoChangeRef.current = onRepoChange;
+  }, [onRepoChange]);
+
 
   // 🔹 Unified loader for environments + releases + repositories
   useEffect(() => {
@@ -113,7 +119,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
           setSelectedRepo((prev) => {
             const next = prev || repos[0];
             if (!prev) {
-              onRepoChange?.(next);
+              onRepoChangeRef.current?.(next);
             }
             return next;
           });
@@ -132,7 +138,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [onRepoChange]);
+  }, []);
 
   // ✅ Load pods whenever environment changes — only for Exceptions tab
   useEffect(() => {
