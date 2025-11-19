@@ -30,13 +30,14 @@ export default function App() {
   const [vulnTimePeriod, setVulnTimePeriod] = useState("latest");
   const [vulnActiveFilters, setVulnActiveFilters] = useState<string[]>([]);
   const [selectedRepo, setSelectedRepo] = useState("");
-  
+
   // Exceptions state
   const [excTimeRange, setExcTimeRange] = useState<"hourly" | "daily">("hourly");
   const [excCluster, setExcCluster] = useState("all");
   // const [excNamespace, setExcNamespace] = useState("all");
   const [excActiveFilters, setExcActiveFilters] = useState<string[]>([]);
   const [excPod, setExcPod] = useState("");
+  const [exceptionsApplyNonce, setExceptionsApplyNonce] = useState(0);
 
 
   useEffect(() => {
@@ -189,6 +190,9 @@ export default function App() {
               onRepoChange={(value) => setSelectedRepo(value ?? "")}
               onEnvironmentChange={setSelectedEnvironment}
               onReleaseChange={(value) => setSelectedRelease(value ?? "")}
+              onApplyExceptions={() =>
+                setExceptionsApplyNonce((nonce) => nonce + 1)
+              }
 
             />
             
@@ -216,6 +220,7 @@ export default function App() {
                 cluster={excCluster}
                 namespace={excPod}
                 logGroupName={selectedLogGroup}
+                applyNonce={exceptionsApplyNonce}
                 activeFilters={excActiveFilters}
                 onFiltersChange={setExcActiveFilters}
               />

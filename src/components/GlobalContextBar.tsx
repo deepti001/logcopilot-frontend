@@ -35,6 +35,7 @@ type GlobalContextBarProps = {
   onRemoveFilter?: (filter: string) => void;
   onExportCsv?: () => void;
   className?: string;
+  onApplyExceptions?: () => void;
 }
 
 const clusters = ["all", "prod-cluster", "staging-cluster", "dev-cluster"];
@@ -65,6 +66,7 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
   onRemoveFilter,
   onExportCsv,
   className,
+  onApplyExceptions,
 }: GlobalContextBarProps) => {
   const [isExporting, setIsExporting] = useState(false);
 
@@ -384,6 +386,14 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
+                <Button
+                  size="sm"
+                  className="ml-1"
+                  onClick={() => onApplyExceptions?.()}
+                  disabled={!selectedPod}
+                >
+                  Apply changes
+                </Button>
               </div>
             )}
           </>

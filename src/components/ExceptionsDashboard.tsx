@@ -57,6 +57,7 @@ interface ExceptionsDashboardProps {
   cluster?: string;
   namespace?: string;
   logGroupName?: string;
+  applyNonce?: number;
   activeFilters?: string[];
   onFiltersChange?: (filters: string[]) => void;
 }
@@ -84,6 +85,7 @@ export function ExceptionsDashboard({
   cluster = "all",
   namespace,
   logGroupName,
+  applyNonce = 0,
 }: ExceptionsDashboardProps) {
   const [hours, setHours] = useState<number>(5); // 1, 2, 3, 4    - check if needed to be removed and 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -101,48 +103,54 @@ export function ExceptionsDashboard({
   const [timeValue, setTimeValue] = useState<number>(5);
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
-  const [reloadFlag, setReloadFlag] = useState(0);
+  const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
 
 
   // --- Pagination state (10 rows per page) ---
   const rowsPerPage = 10;
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  /** ===== Fetch exceptions from backend ===== */
-  useEffect(() => {
-    let aborted = false;
-    if(!namespace) return;
+  const fetchExceptions = async (showToastMessage = false) => {
+    try {
+      setIsLoading(true);
+      setHasError(null);
+      const data = await getExceptions(
+        timeMode,
+        timeValue,
+        startTime,
+        endTime,
+        namespace,
+        logGroupName,
+      );
 
-    (async () => {
-      try {
-        setIsLoading(true);
-        setHasError(null);
-        const data = await getExceptions(
-          timeMode,
-          timeValue,
-          startTime,
-          endTime,
-          namespace,
-          logGroupName,
-        );
-        if (aborted) return;
-
-        setRaw(data);
-        setOriginalSummary(data.summary || "");
-        setAiSummary(data.summary || "");
-        // Map backend items to our table rows
-        const mapped = (data.exceptions || []).map((e, idx) => mapBackendLogToRow(e, idx));
-        setRows(mapped);
-        setCurrentPage(1); // ensure we start at first page after fetch
-      } catch (err: any) {
-        setHasError(err?.message || "Failed to load exceptions");
-      } finally {
-        if (!aborted) setIsLoading(false);
+      setRaw(data);
+      setOriginalSummary(data.summary || "");
+      setAiSummary(data.summary || "");
+      const mapped = (data.exceptions || []).map((e, idx) => mapBackendLogToRow(e, idx));
+      setRows(mapped);
+      setCurrentPage(1);
+      if (showToastMessage) {
+        toast.success("Filters applied");
       }
-    })();
+    } catch (err: any) {
+      setHasError(err?.message || "Failed to load exceptions");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    return () => { aborted = true; };
-  }, [namespace, timeMode, timeValue, startTime, endTime, logGroupName, reloadFlag]);
+  useEffect(() => {
+    if (!namespace || hasLoadedInitial) return;
+    setHasLoadedInitial(true);
+    fetchExceptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [namespace, hasLoadedInitial]);
+
+  useEffect(() => {
+    if (!applyNonce) return;
+    fetchExceptions(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyNonce]);
 
   const windowLabel = useMemo(() => {
     if (timeMode === "hours" && timeValue) {
@@ -541,30 +549,7 @@ export function ExceptionsDashboard({
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => {
-              try {
-                setIsLoading(true);
-                setHasError(null);
-                const data = await getExceptions(
-                  timeMode,
-                  timeValue,
-                  startTime,
-                  endTime,
-                  namespace,
-                  logGroupName,
-                );
-                setRaw(data);
-                setOriginalSummary(data.summary || "");
-                setAiSummary(data.summary || "");
-                const mapped = (data.exceptions || []).map((e, idx) => mapBackendLogToRow(e, idx));
-                setRows(mapped);
-                toast.success("Time filter applied");
-              } catch (err: any) {
-                setHasError(err?.message || "Failed to apply time filter");
-              } finally {
-                setIsLoading(false);
-              }
-            }}
+            onClick={() => fetchExceptions(true)}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Apply
