@@ -36,7 +36,7 @@ export function Header({
     <div className="border-b bg-card p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-bold">LogCopilot (Monitor the tech health)</h1>
+          <h1 className="text-2xl font-bold">LogCopilot</h1>
           <Badge variant="outline" className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
             Last Updated: {new Date().toLocaleTimeString()}

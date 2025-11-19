@@ -68,9 +68,9 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
 }: GlobalContextBarProps) => {
   const [isExporting, setIsExporting] = useState(false);
 
-  const [isImageTagMode, setIsImageTagMode] = useState(true);
+  const [isImageTagMode, setIsImageTagMode] = useState(false);
   const [imageTagInput, setImageTagInput] = useState("");
-  const [appliedImageTag, setAppliedImageTag] = useState<string | null>("sha256%253Af23d3c412b6aab5cf708fb5e7ecaa24bb0681fff3e693e628c13629480bd1d41");
+  const [appliedImageTag, setAppliedImageTag] = useState<string | null>("");
 
   const [repositories, setRepositories] = useState<string[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string>("");
@@ -290,13 +290,6 @@ export const GlobalContextBar: React.FC<GlobalContextBarProps> = ({
                   onCheckedChange={onToggleSourceMode}
                   aria-label="Toggle between Last Build and Image Digest"
                 />
-                <Label className="text-sm">
-                  {isImageTagMode
-                    ? appliedImageTag
-                      ? `Image Digest (${appliedImageTag})`
-                      : "Image Digest"
-                    : "Last Build"}
-                </Label>
               </div>
 
               {isImageTagMode ? (
