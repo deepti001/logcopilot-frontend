@@ -121,12 +121,15 @@ export function ExceptionsDashboard({
     try {
       setIsLoading(true);
       setHasError(null);
+      const logGroupPayload = logGroupName || "/aws/containerinsights/cggenai-dev/application";
+
       const data = await getExceptions(
         timeMode,
         timeValue,
         startTime,
         endTime,
         namespace,
+        logGroupPayload
       );
 
       setRaw(data);
@@ -337,6 +340,8 @@ export function ExceptionsDashboard({
     e: React.FormEvent<HTMLFormElement>
   ): Promise<void> => {
     e.preventDefault();
+    const logGroupPayload = logGroupName || "/aws/containerinsights/cggenai-dev/application";
+
 
     const query = promptText.trim();
     if (!query) {
@@ -346,7 +351,7 @@ export function ExceptionsDashboard({
 
     try {
       setNlpLoading(true);
-      const logGroupPayload = logGroupName || "/aws/containerinsights/cggenai-dev/application";
+      // const logGroupPayload = logGroupName || "/aws/containerinsights/cggenai-dev/application";
 
       if (timeMode === "time-range" && (!startTime || !endTime)) {
         toast.error("Please provide both start and end times for the range");
@@ -355,6 +360,8 @@ export function ExceptionsDashboard({
       }
 
       const safeTimeValue = Math.max(timeValue ?? 0, 1);
+
+      console.log("logGroupPayload", logGroupPayload);
 
       const requestBody = timeMode === "time-range"
         ? {
