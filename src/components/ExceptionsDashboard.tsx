@@ -21,6 +21,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
+  TooltipProps,
   ResponsiveContainer,
 } from "recharts";
 import {
@@ -262,7 +263,7 @@ export function ExceptionsDashboard({
     const formatOpts: Intl.DateTimeFormatOptions = span > 86_400_000
       ? { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }
       : { hour: "2-digit", minute: "2-digit" };
-    
+
     const buckets = Array.from({ length: bucketCount }, (_, i) => ({
       time: new Date(minTs + i * bucketMs).toLocaleString([], formatOpts),
       OutOfMemoryError: 0,
@@ -292,6 +293,28 @@ export function ExceptionsDashboard({
 
     return buckets;
   }, [rows]);
+
+  /** ===== Hover stats sourced from backend counts (first four types + total) ===== */
+  const hoverStats = useMemo(() => {
+    const entries = (raw?.log_entry_types ?? []).slice(0, 4);
+    const total = raw?.count ?? 0;
+    return { entries, total };
+  }, [raw]);
+
+  const renderTooltip = ({ label }: TooltipProps<number, string>) => (
+    <div className="rounded-md border bg-background px-3 py-2 shadow-sm">
+      <div className="text-xs text-muted-foreground">{label ?? "Exceptions"}</div>
+      <div className="mt-1 text-sm font-semibold">Exceptions: {hoverStats.total}</div>
+      <ul className="mt-2 space-y-1">
+        {hoverStats.entries.map((entry) => (
+          <li key={entry.type} className="flex items-center justify-between text-xs">
+            <span>{entry.type}</span>
+            <span className="font-medium">{entry.count}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 
   /** ===== LLM summary (regenerate) ===== */
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -621,7 +644,7 @@ export function ExceptionsDashboard({
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="time" />
                 <YAxis />
-                <RechartsTooltip />
+                <RechartsTooltip content={renderTooltip} />
                 <Area type="monotone" dataKey="OutOfMemoryError" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.5} />
                 <Area type="monotone" dataKey="NullPointerException" stackId="1" stroke="#f97316" fill="#f97316" fillOpacity={0.5} />
                 <Area type="monotone" dataKey="ConnectionTimeout" stackId="1" stroke="#eab308" fill="#eab308" fillOpacity={0.5} />
