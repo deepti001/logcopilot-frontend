@@ -174,7 +174,7 @@ export default function App() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-3" aria-label="Primary dashboards">
               <TabsTrigger value="vulnerabilities">Vulnerabilities</TabsTrigger>
-              <TabsTrigger value="exceptions">Exceptions</TabsTrigger>
+              <TabsTrigger value="exceptions">Insights</TabsTrigger>
               <TabsTrigger value="coverage">Coverage</TabsTrigger>
             </TabsList>
             
