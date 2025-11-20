@@ -178,6 +178,21 @@ export function ExceptionsDashboard({
     return "selected window";
   }, [timeMode, timeValue, startTime, endTime]);
 
+  const formatDateTimeWithSeconds = (value: string) => {
+    if (!value) return value;
+    if (/T\d{2}:\d{2}:\d{2}$/.test(value)) return value;
+
+    const [datePart, timePart] = value.split("T");
+    if (!datePart || !timePart) return value;
+
+    const [hours = "00", minutes = "00", seconds = "00"] = timePart.split(":");
+    const hh = hours.padStart(2, "0");
+    const mm = minutes.padStart(2, "0");
+    const ss = (seconds || "00").padStart(2, "0");
+
+    return `${datePart}T${hh}:${mm}:${ss}`;
+  };
+
   /** ===== Heuristics & helpers ===== */
   function mapBackendLogToRow(e: BackendLogEntry, idx: number): ExceptionRow {
     const when = new Date(e.timestamp);
@@ -363,11 +378,14 @@ export function ExceptionsDashboard({
 
       console.log("logGroupPayload", logGroupPayload);
 
+      const formattedStartTime = formatDateTimeWithSeconds(startTime);
+      const formattedEndTime = formatDateTimeWithSeconds(endTime);
+
       const requestBody = timeMode === "time-range"
         ? {
           query,
-          start_time: startTime,
-          end_time: endTime,
+          start_time: formattedStartTime,
+          end_time: formattedEndTime,
           podname: namespace || undefined,
           log_group_name: logGroupPayload,
         }
