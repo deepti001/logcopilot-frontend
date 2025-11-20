@@ -102,10 +102,19 @@ export async function getExceptions(
 }
 
 
-export type NLQueryRequest = {
-  query: string;
-  timeframe: { hours: number };
-};
+export type NLQueryRequest =
+  | {
+    query: string;
+    timeframe: { hours: number } | { minutes: number };
+    log_group_name?: string;
+  }
+  | {
+    query: string;
+    start_time: string;
+    end_time: string;
+    podname?: string;
+    log_group_name?: string;
+  };
 
 export type NLQueryResponse = {
   answer: string;   // markdown string

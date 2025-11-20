@@ -90,7 +90,6 @@ export function ExceptionsDashboard({
   release,
   cluster = "all",
   namespace,
-  // eslint-disable-next-line no-unused-vars
   logGroupName,
   applyNonce = 0,
 }: ExceptionsDashboardProps) {
@@ -173,23 +172,6 @@ export function ExceptionsDashboard({
       }
     }
     return "selected window";
-  }, [timeMode, timeValue, startTime, endTime]);
-
-  const timeframeHours = useMemo(() => {
-    if (timeMode === "hours" && timeValue) {
-      return Math.max(timeValue, 1 / 60);
-    }
-    if (timeMode === "minutes" && timeValue) {
-      return Math.max(timeValue / 60, 1 / 60);
-    }
-    if (timeMode === "time-range" && startTime && endTime) {
-      const startMs = Date.parse(startTime);
-      const endMs = Date.parse(endTime);
-      if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs > startMs) {
-        return Math.max((endMs - startMs) / 3_600_000, 1 / 60);
-      }
-    }
-    return 1;
   }, [timeMode, timeValue, startTime, endTime]);
 
   /** ===== Heuristics & helpers ===== */
@@ -341,11 +323,34 @@ export function ExceptionsDashboard({
 
     try {
       setNlpLoading(true);
-      const res = await postLogsNlp({
-        query,
-        // timeframe: { hours }, // use your existing hours state
-        timeframe: { hours: timeframeHours },
+      const logGroupPayload = logGroupName || "/aws/containerinsights/cggenai-dev/application";
 
+      if (timeMode === "time-range" && (!startTime || !endTime)) {
+        toast.error("Please provide both start and end times for the range");
+        setNlpLoading(false);
+        return;
+      }
+
+      const safeTimeValue = Math.max(timeValue ?? 0, 1);
+
+      const requestBody = timeMode === "time-range"
+        ? {
+          query,
+          start_time: startTime,
+          end_time: endTime,
+          podname: namespace || undefined,
+          log_group_name: logGroupPayload,
+        }
+        : {
+          query,
+          timeframe: timeMode === "hours"
+            ? { hours: safeTimeValue }
+            : { minutes: safeTimeValue },
+          log_group_name: logGroupPayload,
+        };
+
+      const res = await postLogsNlp({
+        ...requestBody,
       });
       // res.answer is a markdown string from the backend
       setAiSummary(res.answer);
